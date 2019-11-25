@@ -1,0 +1,19 @@
+{
+  "name": "guillaumejchauveau/uk-nswi142-project-api",
+  "license": "MIT",
+  "authors": [
+    {
+      "name": "Guillaume Chauveau",
+      "email": "guillaumejchauveau.ops.gecu@outlook.com"
+    }
+  ],
+  "require": {
+    "php": ">= 7.2",
+    "ext-json": "*"
+  },
+  "autoload": {
+    "psr-4": {
+      "GECU\\ShopList\\": "src/"
+    }
+  }
+}
