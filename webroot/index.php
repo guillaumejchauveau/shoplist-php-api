@@ -1,36 +1,24 @@
 <?php
 
-use GECU\UK_NSWI142_Project_API\Http\ErrorHandlerInterface;
-use GECU\UK_NSWI142_Project_API\Http\Exception\BadRequestException;
-use GECU\UK_NSWI142_Project_API\Http\JsonResponse;
-use GECU\UK_NSWI142_Project_API\Http\Response;
-use GECU\UK_NSWI142_Project_API\Http\Server;
-use GECU\UK_NSWI142_Project_API\Http\ServerRequest;
-use GECU\UK_NSWI142_Project_API\Http\ServerRequestHandlerInterface;
+use GECU\ShopList\Kernel\ErrorController;
+use GECU\ShopList\Kernel\Router;
+use Symfony\Component\EventDispatcher\EventDispatcher;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpKernel\Controller\ArgumentResolver;
+use Symfony\Component\HttpKernel\Controller\ControllerResolver;
+use Symfony\Component\HttpKernel\EventListener\ErrorListener;
+use Symfony\Component\HttpKernel\HttpKernel;
 
-require_once '../src/autoloader.php';
+require_once '../vendor/autoload.php';
 
-class App implements ServerRequestHandlerInterface
-{
 
-    public function handle(ServerRequest $request): Response
-    {
-        $data = null;
-        try {
-            $data = json_decode($request->getBodyContent(), false, 512, JSON_THROW_ON_ERROR);
-        } catch (JsonException $e) {
-            throw new BadRequestException('JSON parse error', null, $e);
-        }
-        $response = new JsonResponse();
-        $response->setStatus(200);
-        $response->setData($data);
-        return $response;
-    }
-}
+$request = Request::createFromGlobals();
+$dispatcher = new EventDispatcher();
+$dispatcher->addSubscriber(new Router());
+$dispatcher->addSubscriber(new ErrorListener([new ErrorController(), "handle"]));
+$kernel = new HttpKernel($dispatcher, new ControllerResolver(), new RequestStack(), new ArgumentResolver());
 
-try {
-    $server = new Server(new App());
-    $server->emit($server->run());
-} catch (Throwable $e) {
-    Server::crash($e);
-}
+$response = $kernel->handle($request);
+$response->send();
+$kernel->terminate($request, $response);
