@@ -1,9 +1,10 @@
 <?php
 
 
-namespace GECU\ShopList\Kernel;
+namespace GECU\Rest\Kernel;
 
 
+use Doctrine\ORM\EntityManager;
 use JsonException;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -12,7 +13,7 @@ use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 
 class Controller
 {
-    public function respond(Request $request): Response
+    public function respond(Request $request, EntityManager $entityManager): Response
     {
         try {
             $data = json_decode($request->getContent(), false, 512, JSON_THROW_ON_ERROR);

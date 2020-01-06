@@ -1,7 +1,7 @@
 <?php
 
 
-namespace GECU\ShopList\Kernel;
+namespace GECU\Rest\Kernel;
 
 
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -14,9 +14,8 @@ class ErrorController
     {
         return new JsonResponse(
           [
-            'error' => $exception->getMessage()
+            'message' => $exception->getMessage()
           ]
         );
     }
-
 }

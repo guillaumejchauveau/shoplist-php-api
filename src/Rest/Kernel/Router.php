@@ -1,7 +1,7 @@
 <?php
 
 
-namespace GECU\ShopList\Kernel;
+namespace GECU\Rest\Kernel;
 
 
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
