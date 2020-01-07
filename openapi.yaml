@@ -1,0 +1,166 @@
+openapi: 3.0.2
+info:
+  version: 1.0.0
+  title: ShopList
+  description: A simple shop list.
+paths:
+  /items:
+    get:
+      tags:
+        - items
+      description: Return every existing items.
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+  '/items/{id}':
+    parameters:
+      - name: id
+        description: The ID of an existing item.
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags:
+        - items
+      description: Return one item.
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListItem'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /list:
+    get:
+      tags:
+        - list
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ListItem'
+    post:
+      tags:
+        - list
+      description: Add an existing item to the list.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListItem'
+      responses:
+        '201':
+          description: Item added to the list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListItem'
+        '403':
+          $ref: '#/components/responses/InvalidData'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  '/list/{itemId}':
+    parameters:
+      - name: itemId
+        description: The ID of an existing item.
+        in: path
+        required: true
+        schema:
+          type: integer
+    put:
+      tags:
+        - list
+      description: Update the characteristics of a list item.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ListItem'
+      responses:
+        '200':
+          description: Item updated.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListItem'
+        '403':
+          $ref: '#/components/responses/InvalidData'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      tags:
+        - list
+      description: Removes an existing item from the list.
+      responses:
+        '204':
+          description: Item removed.
+        '404':
+          $ref: '#/components/responses/NotFound'
+components:
+  responses:
+    NotFound:
+      description: The specified resource was not found.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    InvalidData:
+      description: The data sent with the request could not be accepted.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+  schemas:
+    Item:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      example:
+        id: 3
+        name: Brush
+    ListItem:
+      type: object
+      properties:
+        itemId:
+          type: integer
+        order:
+          type: integer
+          description: >-
+            Can be positive or negative. List items with the same order property
+            will be ordered by itemId.
+        quantity:
+          type: integer
+          description: A positive non-zero number.
+      example:
+        itemId: 3
+        order: 0
+        quantity: 2
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+
+tags:
+  - name: items
+  - name: list
