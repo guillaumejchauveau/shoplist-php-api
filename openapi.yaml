@@ -69,10 +69,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListItem'
-        '403':
+        '400':
           $ref: '#/components/responses/InvalidData'
-        '404':
-          $ref: '#/components/responses/NotFound'
   '/list/{itemId}':
     parameters:
       - name: itemId
@@ -98,14 +96,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ListItem'
-        '403':
+        '400':
           $ref: '#/components/responses/InvalidData'
         '404':
           $ref: '#/components/responses/NotFound'
     delete:
       tags:
         - list
-      description: Removes an existing item from the list.
+      description: Remove an existing item from the list.
       responses:
         '204':
           description: Item removed.
@@ -141,18 +139,18 @@ components:
       properties:
         itemId:
           type: integer
-        order:
+        amount:
+          type: integer
+          description: A positive non-zero number.
+        position:
           type: integer
           description: >-
             Can be positive or negative. List items with the same order property
             will be ordered by itemId.
-        quantity:
-          type: integer
-          description: A positive non-zero number.
       example:
         itemId: 3
-        order: 0
-        quantity: 2
+        amount: 2
+        position: 0
     Error:
       type: object
       properties:

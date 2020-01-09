@@ -1,0 +1,9 @@
+<?php
+
+return [
+  'driver' => 'pdo_mysql',
+  'host' => 'localhost',
+  'user' => '<my-username>',
+  'password' => '<my-password>',
+  'dbname' => '<my-username>'
+];

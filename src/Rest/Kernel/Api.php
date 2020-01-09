@@ -4,75 +4,151 @@
 namespace GECU\Rest\Kernel;
 
 
-use Exception;
-use Symfony\Component\DependencyInjection\ContainerBuilder;
+use GECU\Rest\ResourceRoute;
+use InvalidArgumentException;
+use RuntimeException;
+use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Controller\ArgumentResolver;
-use Symfony\Component\HttpKernel\Controller\ControllerResolver;
-use Symfony\Component\HttpKernel\Event\ViewEvent;
-use Symfony\Component\HttpKernel\EventListener\ErrorListener;
-use Symfony\Component\HttpKernel\HttpKernel;
-use Symfony\Component\HttpKernel\KernelEvents;
-use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\HttpKernel\Controller\ArgumentResolverInterface;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Throwable;
 
 class Api
 {
-    /**
-     * @var HttpKernel
-     */
-    protected $kernel;
+    public const REQUEST_ATTRIBUTE_PATH = 'resourcePath';
+    public const REQUEST_ATTRIBUTE_CLASS = 'resourceClass';
+    public const REQUEST_ATTRIBUTE_ACTION = 'resourceAction';
+    public const REQUEST_ATTRIBUTE_REQUEST_CONTENT_CLASS = 'resourceRequestContentClass';
     /**
      * @var ContainerInterface
      */
     protected $container;
     /**
-     * @var EventDispatcherInterface
+     * @var ArgumentResolverInterface
      */
-    protected $eventDispatcher;
+    protected $argumentResolver;
+    /**
+     * @var string
+     */
+    protected $basePath;
+    /**
+     * @var ResourceRoute[]
+     */
+    protected $resourceRoutes;
 
+    /**
+     * Api constructor.
+     * @param string $basePath
+     * @param string[] $resources
+     * @param ContainerInterface|null $container
+     */
     public function __construct(
       string $basePath,
       array $resources,
-      ?ContainerInterface $container = null,
-      ?EventDispatcherInterface $eventDispatcher = null
+      ?ContainerInterface $container = null
     ) {
-        $container = $container ?: new ContainerBuilder();
-        $eventDispatcher = $eventDispatcher ?: new EventDispatcher();
-        $this->container = $container;
-        $this->eventDispatcher = $eventDispatcher;
+        if (empty($basePath)) {
+            throw new InvalidArgumentException('Invalid base path');
+        }
+        $this->basePath = $basePath;
 
-        $this->eventDispatcher->addSubscriber(new Router($basePath, $resources));
-        $this->eventDispatcher->addSubscriber(new ErrorListener([new ErrorController(), 'handle']));
-        $this->eventDispatcher->addListener(
-          KernelEvents::VIEW,
-          function (ViewEvent $event) {
-              $event->setResponse(new RestResponse($event->getControllerResult()));
-          }
-        );
+        $this->resourceRoutes = [];
+        foreach ($resources as $resource) {
+            foreach ($resource::getRoutes() as $route) {
+                if ($route instanceof ResourceRoute) {
+                    $this->resourceRoutes[] = $route;
+                } elseif (is_array($route)) {
+                    $this->resourceRoutes[] = ResourceRoute::fromArray($resource, $route);
+                } else {
+                    throw new RuntimeException('Invalid route');
+                }
+            }
+        }
+
+        $container = $container ?? new Container();
+        $this->container = $container;
 
         $argumentValueResolvers = ArgumentResolver::getDefaultArgumentValueResolvers();
         $argumentValueResolvers[] = new ServiceArgumentValueResolver($this->container);
-        $this->kernel = new HttpKernel(
-          $this->eventDispatcher,
-          new ControllerResolver(),
-          new RequestStack(),
-          new ArgumentResolver(null, $argumentValueResolvers)
-        );
+        $argumentValueResolvers[] = new RequestContentAsResourceArgumentValueResolver();
+        $this->argumentResolver = new ArgumentResolver(null, $argumentValueResolvers);
     }
 
-    public function run(?Request $request = null)
+    public function run(): void
     {
-        $request = $request ?: Request::createFromGlobals();
+        $request = Request::createFromGlobals();
         try {
-            $response = $this->kernel->handle($request);
+            $route = $this->prepareRequest($request);
+            $response = $this->handleRequest($request);
+            if ($route->getStatus() !== null) {
+                $response->setStatusCode($route->getStatus());
+            }
             $response->send();
-            $this->kernel->terminate($request, $response);
-        } catch (Exception $e) {
-            // TODO
+        } catch (Throwable $e) {
+            $this->handleError($e)->send();
         }
+    }
+
+    protected function prepareRequest(Request $request): ResourceRoute
+    {
+        $path = substr($request->getRequestUri(), strlen($this->basePath));
+        if (!empty($path) && $path[-1] !== ResourceRoute::PATH_DELIMITER) {
+            $request->attributes->set(self::REQUEST_ATTRIBUTE_PATH, $path);
+            foreach ($this->resourceRoutes as $route) {
+                $match = $route->match($request);
+                if (is_array($match)) {
+                    $request->attributes->set(self::REQUEST_ATTRIBUTE_CLASS, $route->getResourceClass());
+                    $request->attributes->set(self::REQUEST_ATTRIBUTE_ACTION, $route->getAction());
+                    $request->attributes->set(
+                      self::REQUEST_ATTRIBUTE_REQUEST_CONTENT_CLASS,
+                      $route->getRequestContentClass()
+                    );
+                    foreach ($match as $key => $value) {
+                        $request->attributes->set($key, $value);
+                    }
+
+                    return $route;
+                }
+            }
+        }
+
+        throw new NotFoundHttpException('No resources corresponding');
+    }
+
+    protected function handleRequest(Request $request): Response
+    {
+        $resourceClass = $request->attributes->get(self::REQUEST_ATTRIBUTE_CLASS);
+        $resourceAction = $request->attributes->get(self::REQUEST_ATTRIBUTE_ACTION);
+        $resourceConstructor = call_user_func([$resourceClass, 'getResourceConstructor']);
+        $resourceConstructorArgs = $this->argumentResolver->getArguments($request, $resourceConstructor);
+        try {
+            $resource = $resourceConstructor(...$resourceConstructorArgs);
+
+            if ($resourceAction === null) {
+                $response = $resource;
+            } else {
+                $action = [$resource, $resourceAction];
+                $arguments = $this->argumentResolver->getArguments($request, $action);
+                $response = $action(...$arguments);
+            }
+
+            return new RestResponse($response);
+        } catch (InvalidArgumentException $e) {
+            throw new BadRequestHttpException($e->getMessage());
+        }
+    }
+
+    protected function handleError(Throwable $throwable): Response
+    {
+        if ($throwable instanceof HttpExceptionInterface) {
+            return new RestResponse($throwable, $throwable->getStatusCode(), $throwable->getHeaders());
+        }
+        return new RestResponse($throwable, Response::HTTP_INTERNAL_SERVER_ERROR);
     }
 
     /**
@@ -81,13 +157,5 @@ class Api
     public function getContainer(): ContainerInterface
     {
         return $this->container;
-    }
-
-    /**
-     * @return EventDispatcherInterface
-     */
-    public function getEventDispatcher(): EventDispatcherInterface
-    {
-        return $this->eventDispatcher;
     }
 }

@@ -12,20 +12,26 @@ class RestResponse extends JsonResponse
 {
     protected $restData;
 
-    public function __construct($data = null, int $status = 200, array $headers = [])
+    public function __construct($data = null, int $status = self::HTTP_OK, array $headers = [])
     {
-        parent::__construct(static::convertData($data), $status, $headers, false);
-        $this->restData = $data;
+        parent::__construct($data, $status, $headers, false);
+
+        // Parent constructor will call RestResponse::setData with $data = [] if $data is null.
+        if ($data === null) {
+            $this->restData = $data;
+            $this->update();
+        }
     }
 
-    protected static function convertData($data)
+    protected function update()
     {
-        if ($data instanceof Throwable && !($data instanceof JsonSerializable)) {
-            return [
-              'message' => $data->getMessage()
-            ];
+        parent::update();
+        if ($this->getData() === null && $this->isSuccessful()) {
+            $this->setStatusCode(self::HTTP_NO_CONTENT);
+            $this->setContent(null);
+            $this->headers->remove('Content-Type');
         }
-        return $data;
+        return $this;
     }
 
     public function getData()
@@ -36,10 +42,14 @@ class RestResponse extends JsonResponse
     /**
      * @inheritDoc
      */
-    public function setData($data = [])
+    public function setData($data = null)
     {
-        parent::setData(static::convertData($data));
         $this->restData = $data;
-        return $this;
+        if ($data instanceof Throwable && !($data instanceof JsonSerializable)) {
+            $data = [
+              'message' => $data->getMessage()
+            ];
+        }
+        return parent::setData($data);
     }
 }

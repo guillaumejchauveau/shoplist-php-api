@@ -2,8 +2,10 @@
 
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\Tools\Setup;
-use GECU\Rest\RestResource;
 use GECU\ShopList\Item;
+use GECU\ShopList\Items;
+use GECU\ShopList\ListItem;
+use GECU\ShopList\ListItems;
 use Symfony\Component\DependencyInjection\Definition;
 
 require 'paths.php';
@@ -12,28 +14,28 @@ $config = [
   'db' => require ROOT . DS . 'db_config.php',
   'doctrine' => Setup::createAnnotationMetadataConfiguration(
     [APP],
-    true,
+    false,
     null,
     null,
     false
   ),
   'basePath' => '/UK/Web_Applications/Project/API/',
   'resources' => [
-    new RestResource('GET', 'items', [Item::class, 'getAllItems']),
-    new RestResource('GET', 'items/{id}', [Item::class, 'getItem'])
+    Items::class,
+    Item::class,
+    ListItems::class,
+    ListItem::class
   ]
 ];
 
-$entityManagerDefinition = new Definition(
-  EntityManager::class,
-  [
-    $config['db'],
-    $config['doctrine']
-  ]
-);
-$entityManagerDefinition->setFactory([EntityManager::class, 'create']);
 $config['services'] = [
-  'entity_manager' => $entityManagerDefinition
+  (new Definition(
+    EntityManager::class,
+    [
+      $config['db'],
+      $config['doctrine']
+    ]
+  ))->setFactory([EntityManager::class, 'create'])
 ];
 
 return $config;
