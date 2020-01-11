@@ -14,7 +14,7 @@ $config = [
   'db' => require ROOT . DS . 'db_config.php',
   'doctrine' => Setup::createAnnotationMetadataConfiguration(
     [APP],
-    false,
+    true,
     null,
     null,
     false
