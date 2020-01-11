@@ -5,7 +5,6 @@ namespace GECU\Rest\Kernel;
 
 
 use Exception;
-use GECU\Rest\ResourceInterface;
 use ReflectionClass;
 use ReflectionException;
 use RuntimeException;
@@ -37,9 +36,6 @@ class RequestContentAsResourceArgumentValueResolver implements ArgumentValueReso
     {
         try {
             $resourceClass = new ReflectionClass($argument->getType());
-            if (!$resourceClass->implementsInterface(ResourceInterface::class)) {
-                throw new RuntimeException('Unexpected invalid resolution arguments');
-            }
             $resourceInstance = $resourceClass->newInstanceWithoutConstructor();
             $data = json_decode($request->getContent(), false, 512, JSON_THROW_ON_ERROR);
             foreach ($data as $key => $value) {

@@ -80,7 +80,7 @@ class ListItem implements ResourceInterface, JsonSerializable
         return $listItem;
     }
 
-    public static function getResourceConstructor(): Callable
+    public static function getResourceFactory(): Callable
     {
         return [self::class, 'createResource'];
     }
@@ -102,7 +102,7 @@ class ListItem implements ResourceInterface, JsonSerializable
         ];
     }
 
-    public function getId()
+    public function getId(): int
     {
         return $this->id;
     }
@@ -143,7 +143,7 @@ class ListItem implements ResourceInterface, JsonSerializable
         $this->setItem($this->em->getRepository(Item::class)->find($this->itemId));
     }
 
-    public function getItemId()
+    public function getItemId(): int
     {
         return $this->item->getId();
     }

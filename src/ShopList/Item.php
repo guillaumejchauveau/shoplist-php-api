@@ -58,7 +58,7 @@ class Item implements ResourceInterface, JsonSerializable
         return $item;
     }
 
-    public static function getResourceConstructor(): Callable
+    public static function getResourceFactory(): Callable
     {
         return [self::class, 'createResource'];
     }

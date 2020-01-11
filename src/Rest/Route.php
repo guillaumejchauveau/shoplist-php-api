@@ -8,7 +8,7 @@ use GECU\Rest\Kernel\Api;
 use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Request;
 
-class ResourceRoute
+class Route
 {
     public const PATH_DELIMITER = '/';
     public const PATH_PARAM_BEGIN = '{';
@@ -38,20 +38,12 @@ class ResourceRoute
      */
     protected $status;
 
-    public function __construct(
-      string $resourceClass,
-      string $method,
-      string $path,
-      ?string $action = null,
-      ?string $requestContentClass = null,
-      ?int $status = null
-    ) {
-        $this->resourceClass = $resourceClass;
-        $this->method = $method;
-        $this->setPath($path);
-        $this->action = $action;
-        $this->requestContentClass = $requestContentClass;
-        $this->status = $status;
+    public function __construct(array $args)
+    {
+        $this->method = $args['method'];
+        $this->setPath($args['path']);
+        $this->requestContentClass = $args['requestContentClass'] ?? null;
+        $this->status = $args['status'] ?? null;
     }
 
     protected function setPath(string $path): void
@@ -72,21 +64,25 @@ class ResourceRoute
         }
     }
 
-    public static function fromArray(string $resourceClass, array $data): self
-    {
-        return new self(
-          $resourceClass,
-          $data['method'],
-          $data['path'],
-          $data['action'] ?? null,
-          $data['requestContentClass'] ?? null,
-          $data['status'] ?? null
-        );
+    public static function fromArray(
+      array $args,
+      string $resourceClass,
+      ?string $action = null
+    ): self {
+        $route = new self($args);
+        $route->setResourceClass($resourceClass);
+        $route->setAction($action);
+        return $route;
     }
 
     public function getResourceClass(): string
     {
         return $this->resourceClass;
+    }
+
+    public function setResourceClass(string $class): void
+    {
+        $this->resourceClass = $class;
     }
 
     /**
@@ -95,6 +91,11 @@ class ResourceRoute
     public function getAction(): ?string
     {
         return $this->action;
+    }
+
+    public function setAction(?string $action): void
+    {
+        $this->action = $action;
     }
 
     /**

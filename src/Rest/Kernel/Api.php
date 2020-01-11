@@ -4,7 +4,7 @@
 namespace GECU\Rest\Kernel;
 
 
-use GECU\Rest\ResourceRoute;
+use GECU\Rest\Route;
 use InvalidArgumentException;
 use RuntimeException;
 use Symfony\Component\DependencyInjection\Container;
@@ -37,7 +37,7 @@ class Api
      */
     protected $basePath;
     /**
-     * @var ResourceRoute[]
+     * @var Route[]
      */
     protected $resourceRoutes;
 
@@ -57,19 +57,6 @@ class Api
         }
         $this->basePath = $basePath;
 
-        $this->resourceRoutes = [];
-        foreach ($resources as $resource) {
-            foreach ($resource::getRoutes() as $route) {
-                if ($route instanceof ResourceRoute) {
-                    $this->resourceRoutes[] = $route;
-                } elseif (is_array($route)) {
-                    $this->resourceRoutes[] = ResourceRoute::fromArray($resource, $route);
-                } else {
-                    throw new RuntimeException('Invalid route');
-                }
-            }
-        }
-
         $container = $container ?? new Container();
         $this->container = $container;
 
@@ -77,6 +64,27 @@ class Api
         $argumentValueResolvers[] = new ServiceArgumentValueResolver($this->container);
         $argumentValueResolvers[] = new RequestContentAsResourceArgumentValueResolver();
         $this->argumentResolver = new ArgumentResolver(null, $argumentValueResolvers);
+
+        $this->setResources($resources);
+    }
+
+    /**
+     * @param string[] $resources
+     */
+    protected function setResources(array $resources)
+    {
+        $this->resourceRoutes = [];
+        foreach ($resources as $resource) {
+            foreach ($resource::getRoutes() as $route) {
+                if ($route instanceof Route) {
+                    $this->resourceRoutes[] = $route;
+                } elseif (is_array($route)) {
+                    $this->resourceRoutes[] = Route::fromArray($resource, $route);
+                } else {
+                    throw new RuntimeException('Invalid route');
+                }
+            }
+        }
     }
 
     public function run(): void
@@ -94,15 +102,18 @@ class Api
         }
     }
 
-    protected function prepareRequest(Request $request): ResourceRoute
+    protected function prepareRequest(Request $request): Route
     {
         $path = substr($request->getRequestUri(), strlen($this->basePath));
-        if (!empty($path) && $path[-1] !== ResourceRoute::PATH_DELIMITER) {
+        if (!empty($path) && $path[-1] !== Route::PATH_DELIMITER) {
             $request->attributes->set(self::REQUEST_ATTRIBUTE_PATH, $path);
             foreach ($this->resourceRoutes as $route) {
                 $match = $route->match($request);
                 if (is_array($match)) {
-                    $request->attributes->set(self::REQUEST_ATTRIBUTE_CLASS, $route->getResourceClass());
+                    $request->attributes->set(
+                      self::REQUEST_ATTRIBUTE_CLASS,
+                      $route->getResourceClass()
+                    );
                     $request->attributes->set(self::REQUEST_ATTRIBUTE_ACTION, $route->getAction());
                     $request->attributes->set(
                       self::REQUEST_ATTRIBUTE_REQUEST_CONTENT_CLASS,
@@ -124,10 +135,13 @@ class Api
     {
         $resourceClass = $request->attributes->get(self::REQUEST_ATTRIBUTE_CLASS);
         $resourceAction = $request->attributes->get(self::REQUEST_ATTRIBUTE_ACTION);
-        $resourceConstructor = call_user_func([$resourceClass, 'getResourceConstructor']);
-        $resourceConstructorArgs = $this->argumentResolver->getArguments($request, $resourceConstructor);
+        $resourceFactory = call_user_func([$resourceClass, 'getResourceFactory']);
+        $resourceFactoryArgs = $this->argumentResolver->getArguments(
+          $request,
+          $resourceFactory
+        );
         try {
-            $resource = $resourceConstructor(...$resourceConstructorArgs);
+            $resource = $resourceFactory(...$resourceFactoryArgs);
 
             if ($resourceAction === null) {
                 $response = $resource;
@@ -146,7 +160,11 @@ class Api
     protected function handleError(Throwable $throwable): Response
     {
         if ($throwable instanceof HttpExceptionInterface) {
-            return new RestResponse($throwable, $throwable->getStatusCode(), $throwable->getHeaders());
+            return new RestResponse(
+              $throwable,
+              $throwable->getStatusCode(),
+              $throwable->getHeaders()
+            );
         }
         return new RestResponse($throwable, Response::HTTP_INTERNAL_SERVER_ERROR);
     }

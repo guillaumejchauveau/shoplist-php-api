@@ -30,7 +30,7 @@ class Items implements ResourceInterface, JsonSerializable
         return new self($em);
     }
 
-    public static function getResourceConstructor(): Callable
+    public static function getResourceFactory(): Callable
     {
         return [self::class, 'createResource'];
     }

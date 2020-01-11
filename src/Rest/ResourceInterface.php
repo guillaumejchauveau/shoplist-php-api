@@ -6,10 +6,10 @@ namespace GECU\Rest;
 
 interface ResourceInterface
 {
-    public static function getResourceConstructor(): Callable;
+    public static function getResourceFactory(): Callable;
 
     /**
-     * @return array<array|ResourceRoute>
+     * @return array<array|Route>
      */
     public static function getRoutes(): array;
 }
