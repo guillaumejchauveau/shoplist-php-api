@@ -4,10 +4,23 @@
 namespace GECU\Rest;
 
 
+use Doctrine\Common\Annotations\Annotation\Target;
 use GECU\Rest\Kernel\Api;
 use InvalidArgumentException;
 use Symfony\Component\HttpFoundation\Request;
 
+/**
+ * Class Route
+ * @package GECU\Rest
+ * @Annotation
+ * @Target({"CLASS", "METHOD"})
+ * @Attributes({
+ *   @Attribute("method", type="string", required=true),
+ *   @Attribute("path", type="string", required=true),
+ *   @Attribute("requestContentClass", type="string"),
+ *   @Attribute("status", type="integer"),
+ * })
+ */
 class Route
 {
     public const PATH_DELIMITER = '/';

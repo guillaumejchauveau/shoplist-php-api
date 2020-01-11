@@ -4,9 +4,15 @@
 namespace GECU\Rest\Kernel;
 
 
+use Doctrine\Common\Annotations\AnnotationException;
+use Doctrine\Common\Annotations\AnnotationReader;
+use Doctrine\Common\Annotations\AnnotationRegistry;
+use Doctrine\Common\Annotations\Reader;
+use GECU\Rest\ResourceFactory;
 use GECU\Rest\Route;
 use InvalidArgumentException;
-use RuntimeException;
+use ReflectionClass;
+use ReflectionException;
 use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -40,18 +46,30 @@ class Api
      * @var Route[]
      */
     protected $resourceRoutes;
+    /**
+     * @var callable[]
+     */
+    protected $resourceFactories;
+    /**
+     * @var Reader
+     */
+    protected $annotationReader;
 
     /**
      * Api constructor.
      * @param string $basePath
      * @param string[] $resources
      * @param ContainerInterface|null $container
+     * @param Reader|null $annotationReader
+     * @throws AnnotationException
      */
     public function __construct(
       string $basePath,
       array $resources,
-      ?ContainerInterface $container = null
+      ?ContainerInterface $container = null,
+      ?Reader $annotationReader = null
     ) {
+        AnnotationRegistry::registerFile(dirname(__DIR__) . '/RestAnnotations.php');
         if (empty($basePath)) {
             throw new InvalidArgumentException('Invalid base path');
         }
@@ -65,6 +83,8 @@ class Api
         $argumentValueResolvers[] = new RequestContentAsResourceArgumentValueResolver();
         $this->argumentResolver = new ArgumentResolver(null, $argumentValueResolvers);
 
+        $this->annotationReader = $annotationReader ?? new AnnotationReader();
+
         $this->setResources($resources);
     }
 
@@ -74,15 +94,54 @@ class Api
     protected function setResources(array $resources)
     {
         $this->resourceRoutes = [];
-        foreach ($resources as $resource) {
-            foreach ($resource::getRoutes() as $route) {
-                if ($route instanceof Route) {
-                    $this->resourceRoutes[] = $route;
-                } elseif (is_array($route)) {
-                    $this->resourceRoutes[] = Route::fromArray($resource, $route);
-                } else {
-                    throw new RuntimeException('Invalid route');
+        $this->resourceFactories = [];
+        foreach ($resources as $resourceClassName) {
+            try {
+                $resourceClass = new ReflectionClass($resourceClassName);
+                $resourceFactory = null;
+
+                $resourceRoute = $this->annotationReader->getClassAnnotation(
+                  $resourceClass,
+                  Route::class
+                );
+                if ($resourceRoute !== null) {
+                    $resourceRoute->setResourceClass($resourceClassName);
+                    $this->resourceRoutes[] = $resourceRoute;
                 }
+                foreach ($resourceClass->getMethods() as $method) {
+                    $factory = $this->annotationReader->getMethodAnnotation(
+                      $method,
+                      ResourceFactory::class
+                    );
+                    if ($factory !== null) {
+                        if ($resourceFactory !== null) {
+                            throw new InvalidArgumentException(
+                              'Resource must have only one constructor'
+                            );
+                        }
+                        $resourceFactory = $method->getName();
+                        continue;
+                    }
+                    $resourceRoute = $this->annotationReader->getMethodAnnotation(
+                      $method,
+                      Route::class
+                    );
+                    if ($resourceRoute !== null) {
+                        $resourceRoute->setResourceClass($resourceClassName);
+                        $resourceRoute->setAction($method->getName());
+                        $this->resourceRoutes[] = $resourceRoute;
+                    }
+                }
+
+                if ($resourceFactory === null) {
+                    throw new InvalidArgumentException('Resource must have one constructor');
+                }
+                $this->resourceFactories[$resourceClassName] = [
+                  $resourceClassName,
+                  $resourceFactory
+                ];
+            } catch (ReflectionException $e) {
+                throw new InvalidArgumentException('Resource must be a valid class name');
             }
         }
     }
@@ -135,7 +194,7 @@ class Api
     {
         $resourceClass = $request->attributes->get(self::REQUEST_ATTRIBUTE_CLASS);
         $resourceAction = $request->attributes->get(self::REQUEST_ATTRIBUTE_ACTION);
-        $resourceFactory = call_user_func([$resourceClass, 'getResourceFactory']);
+        $resourceFactory = $this->resourceFactories[$resourceClass];
         $resourceFactoryArgs = $this->argumentResolver->getArguments(
           $request,
           $resourceFactory
