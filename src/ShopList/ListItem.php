@@ -5,7 +5,9 @@ namespace GECU\ShopList;
 
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\Mapping as ORM;
-use GECU\Rest\ResourceInterface;
+use Doctrine\ORM\OptimisticLockException;
+use Doctrine\ORM\ORMException;
+use GECU\Rest;
 use InvalidArgumentException;
 use JsonSerializable;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -16,7 +18,7 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  * @ORM\Entity
  * @ORM\Table(name="list")
  */
-class ListItem implements ResourceInterface, JsonSerializable
+class ListItem implements JsonSerializable
 {
     /**
      * @ORM\Id
@@ -59,6 +61,12 @@ class ListItem implements ResourceInterface, JsonSerializable
         $this->em = $em;
     }
 
+    /**
+     * @param EntityManager $em
+     * @param int|null $itemId
+     * @return ListItem|object|null
+     * @Rest\ResourceFactory
+     */
     public static function createResource(EntityManager $em, int $itemId = null)
     {
         if ($itemId === null) {
@@ -78,28 +86,6 @@ class ListItem implements ResourceInterface, JsonSerializable
         }
         $listItem->attachEntityManager($em);
         return $listItem;
-    }
-
-    public static function getResourceFactory(): Callable
-    {
-        return [self::class, 'createResource'];
-    }
-
-    public static function getRoutes(): array
-    {
-        return [
-          [
-            'method' => 'PUT',
-            'path' => '/list/{itemId}',
-            'action' => 'updateWithListItem',
-            'requestContentClass' => ListItem::class,
-          ],
-          [
-            'method' => 'DELETE',
-            'path' => '/list/{itemId}',
-            'action' => 'delete'
-          ]
-        ];
     }
 
     public function getId(): int
@@ -124,6 +110,13 @@ class ListItem implements ResourceInterface, JsonSerializable
         $this->itemId = $item->getId();
     }
 
+    /**
+     * @param ListItem $listItem
+     * @return $this
+     * @throws ORMException
+     * @throws OptimisticLockException
+     * @Rest\Route(method="PUT", path="/list/{itemId}", requestContentClass=ListItem::class)
+     */
     public function updateWithListItem(ListItem $listItem): self
     {
         $listItem->attachEntityManager($this->em);
@@ -188,6 +181,11 @@ class ListItem implements ResourceInterface, JsonSerializable
         $this->amount = $amount;
     }
 
+    /**
+     * @throws ORMException
+     * @throws OptimisticLockException
+     * @Rest\Route(method = "DELETE", path = "/list/{itemId}")
+     */
     public function delete(): void
     {
         $this->em->remove($this);

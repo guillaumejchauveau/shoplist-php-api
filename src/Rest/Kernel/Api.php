@@ -4,8 +4,15 @@
 namespace GECU\Rest\Kernel;
 
 
+use Doctrine\Common\Annotations\AnnotationException;
+use Doctrine\Common\Annotations\AnnotationReader;
+use Doctrine\Common\Annotations\AnnotationRegistry;
+use Doctrine\Common\Annotations\Reader;
+use GECU\Rest\ResourceFactory;
 use GECU\Rest\Route;
 use InvalidArgumentException;
+use ReflectionClass;
+use ReflectionException;
 use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Response;
@@ -30,18 +37,31 @@ class Api
      * @var Route[]
      */
     protected $resourceRoutes;
+    /**
+     * @var callable[]
+     */
+    protected $resourceFactories;
+    /**
+     * @var Reader
+     */
+    protected $annotationReader;
 
     /**
      * Api constructor.
      * @param string[] $resources
      * @param string $webroot
      * @param ContainerInterface|null $container
+     * @param Reader|null $annotationReader
+     * @throws AnnotationException
      */
     public function __construct(
       array $resources,
       string $webroot = '',
-      ?ContainerInterface $container = null
+      ?ContainerInterface $container = null,
+      ?Reader $annotationReader = null
     ) {
+        AnnotationRegistry::registerFile(dirname(__DIR__) . '/RestAnnotations.php');
+
         $container = $container ?? new Container();
         $this->container = $container;
 
@@ -49,6 +69,8 @@ class Api
         $argumentValueResolvers[] = new ServiceArgumentValueResolver($this->container);
         $argumentValueResolvers[] = new RequestContentAsResourceArgumentValueResolver();
         $this->argumentResolver = new ArgumentResolver(null, $argumentValueResolvers);
+
+        $this->annotationReader = $annotationReader ?? new AnnotationReader();
 
         $this->setResources($resources);
         $requestFactory = new RestRequestFactory($this->resourceRoutes, $webroot);
@@ -61,19 +83,54 @@ class Api
     protected function setResources(array $resources)
     {
         $this->resourceRoutes = [];
+        $this->resourceFactories = [];
         foreach ($resources as $resourceClassName) {
-            foreach ($resourceClassName::getRoutes() as $route) {
-                if ($route instanceof Route) {
-                    $this->resourceRoutes[] = $route;
-                } elseif (is_array($route)) {
-                    $this->resourceRoutes[] = Route::fromArray(
-                      $route,
-                      $resourceClassName,
-                      $route['action'] ?? null
-                    );
-                } else {
-                    throw new InvalidArgumentException('Invalid route');
+            try {
+                $resourceClass = new ReflectionClass($resourceClassName);
+                $resourceFactory = null;
+
+                $resourceRoute = $this->annotationReader->getClassAnnotation(
+                  $resourceClass,
+                  Route::class
+                );
+                if ($resourceRoute !== null) {
+                    $resourceRoute->setResourceClass($resourceClassName);
+                    $this->resourceRoutes[] = $resourceRoute;
                 }
+                foreach ($resourceClass->getMethods() as $method) {
+                    $factory = $this->annotationReader->getMethodAnnotation(
+                      $method,
+                      ResourceFactory::class
+                    );
+                    if ($factory !== null) {
+                        if ($resourceFactory !== null) {
+                            throw new InvalidArgumentException(
+                              'Resource must have only one constructor'
+                            );
+                        }
+                        $resourceFactory = $method->getName();
+                        continue;
+                    }
+                    $resourceRoute = $this->annotationReader->getMethodAnnotation(
+                      $method,
+                      Route::class
+                    );
+                    if ($resourceRoute !== null) {
+                        $resourceRoute->setResourceClass($resourceClassName);
+                        $resourceRoute->setAction($method->getName());
+                        $this->resourceRoutes[] = $resourceRoute;
+                    }
+                }
+
+                if ($resourceFactory === null) {
+                    throw new InvalidArgumentException('Resource must have one constructor');
+                }
+                $this->resourceFactories[$resourceClassName] = [
+                  $resourceClassName,
+                  $resourceFactory
+                ];
+            } catch (ReflectionException $e) {
+                throw new InvalidArgumentException('Resource must be a valid class name');
             }
         }
     }
