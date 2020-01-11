@@ -5,7 +5,7 @@ namespace GECU\ShopList;
 
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\Mapping as ORM;
-use GECU\Rest\ResourceInterface;
+use GECU\Rest;
 use JsonSerializable;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -14,8 +14,9 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
  * @package GECU\ShopList
  * @ORM\Entity
  * @ORM\Table(name="items")
+ * @Rest\Route(method="GET", path="/items/{id}")
  */
-class Item implements ResourceInterface, JsonSerializable
+class Item implements JsonSerializable
 {
     /**
      * @ORM\Id
@@ -45,6 +46,12 @@ class Item implements ResourceInterface, JsonSerializable
         $this->em = $em;
     }
 
+    /**
+     * @param EntityManager $em
+     * @param int|null $id
+     * @return Item|object|null
+     * @Rest\ResourceFactory
+     */
     public static function createResource(EntityManager $em, int $id = null)
     {
         if ($id === null) {
@@ -56,21 +63,6 @@ class Item implements ResourceInterface, JsonSerializable
         }
         $item->attachEntityManager($em);
         return $item;
-    }
-
-    public static function getResourceFactory(): callable
-    {
-        return [self::class, 'createResource'];
-    }
-
-    public static function getRoutes(): array
-    {
-        return [
-          [
-            'method' => 'GET',
-            'path' => '/items/{id}'
-          ]
-        ];
     }
 
     /**

@@ -5,10 +5,15 @@ namespace GECU\ShopList;
 
 
 use Doctrine\ORM\EntityManager;
-use GECU\Rest\ResourceInterface;
+use GECU\Rest;
 use JsonSerializable;
 
-class Items implements ResourceInterface, JsonSerializable
+/**
+ * Class Items
+ * @package GECU\ShopList
+ * @Rest\Route(method = "GET", path = "/items")
+ */
+class Items implements JsonSerializable
 {
     /**
      * @var EntityManager
@@ -25,24 +30,14 @@ class Items implements ResourceInterface, JsonSerializable
         $this->em = $em;
     }
 
+    /**
+     * @param EntityManager $em
+     * @return static
+     * @Rest\ResourceFactory
+     */
     public static function createResource(EntityManager $em): self
     {
         return new self($em);
-    }
-
-    public static function getResourceFactory(): callable
-    {
-        return [self::class, 'createResource'];
-    }
-
-    public static function getRoutes(): array
-    {
-        return [
-          [
-            'method' => 'GET',
-            'path' => '/items'
-          ]
-        ];
     }
 
     /**
