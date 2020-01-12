@@ -4,15 +4,12 @@
 namespace GECU\Rest\Kernel;
 
 
+use GECU\Rest\Route;
 use Symfony\Component\HttpFoundation\Request;
 
 class RestRequest extends Request
 {
     protected $route;
-    protected $resourcePath;
-    protected $resourceClassName;
-    protected $resourceAction;
-    protected $resourceRequestContentClassName;
     protected $webroot;
 
     public function __construct(
@@ -23,37 +20,30 @@ class RestRequest extends Request
       array $files = [],
       array $server = [],
       $content = null,
-      $routes = [],
+      array $routes = [],
       string $webroot = ''
     ) {
         parent::__construct($query, $request, $attributes, $cookies, $files, $server, $content);
-        $this->route = null;
-        $this->resourcePath = null;
-        $this->resourceClassName = null;
-        $this->resourceAction = null;
-        $this->resourceRequestContentClassName = null;
         $this->webroot = $webroot;
-
-        $path = substr($this->getRequestUri(), strlen($this->getBasePath() . '/'));
-        if (!empty($path) && $path[-1] !== '/') {
-            $this->resourcePath = $path;
+        $this->route = null;
+        if (!empty($this->getPathInfo()) && $this->getPathInfo()[-1] !== '/') {
             foreach ($routes as $route) {
                 $match = $route->match($this);
                 if (is_array($match)) {
-                    $this->resourceClassName = $route->getResourceClass();
-                    $this->resourceAction = $route->getAction();
-                    $this->resourceRequestContentClassName = $route->getRequestContentClass();
+                    $this->route = $route;
                     foreach ($match as $key => $value) {
                         $this->attributes->set($key, $value);
                     }
-                    $this->route = $route;
                     break;
                 }
             }
         }
     }
 
-    protected function prepareBaseUrl()
+    /**
+     * @inheritDoc
+     */
+    protected function prepareBaseUrl(): string
     {
         $base = dirname($this->server->get('PHP_SELF'));
         $indexPos = strpos($base, '/' . $this->webroot);
@@ -64,43 +54,18 @@ class RestRequest extends Request
     }
 
     /**
-     * @return mixed
+     * @return string
      */
-    public function getRoute()
+    public function getResourcePath(): string
+    {
+        return $this->getPathInfo();
+    }
+
+    /**
+     * @return Route|null
+     */
+    public function getRoute(): ?Route
     {
         return $this->route;
     }
-
-    /**
-     * @return false|string
-     */
-    public function getResourcePath()
-    {
-        return $this->resourcePath;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getResourceClassName()
-    {
-        return $this->resourceClassName;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getResourceAction()
-    {
-        return $this->resourceAction;
-    }
-
-    /**
-     * @return mixed
-     */
-    public function getResourceRequestContentClassName()
-    {
-        return $this->resourceRequestContentClassName;
-    }
-
 }

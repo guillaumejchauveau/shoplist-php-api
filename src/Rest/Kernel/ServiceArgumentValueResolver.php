@@ -21,7 +21,7 @@ class ServiceArgumentValueResolver implements ArgumentValueResolverInterface
     /**
      * @inheritDoc
      */
-    public function supports(Request $request, ArgumentMetadata $argument)
+    public function supports(Request $request, ArgumentMetadata $argument): bool
     {
         return $this->container->has($argument->getType());
     }
@@ -29,7 +29,7 @@ class ServiceArgumentValueResolver implements ArgumentValueResolverInterface
     /**
      * @inheritDoc
      */
-    public function resolve(Request $request, ArgumentMetadata $argument)
+    public function resolve(Request $request, ArgumentMetadata $argument): iterable
     {
         yield $this->container->get($argument->getType());
     }

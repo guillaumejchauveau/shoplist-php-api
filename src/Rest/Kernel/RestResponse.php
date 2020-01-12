@@ -23,7 +23,7 @@ class RestResponse extends JsonResponse
         }
     }
 
-    protected function update()
+    protected function update(): self
     {
         parent::update();
         if ($this->getData() === null && $this->isSuccessful()) {
@@ -42,7 +42,7 @@ class RestResponse extends JsonResponse
     /**
      * @inheritDoc
      */
-    public function setData($data = null)
+    public function setData($data = null): self
     {
         $this->restData = $data;
         if ($data instanceof Throwable && !($data instanceof JsonSerializable)) {
@@ -50,6 +50,7 @@ class RestResponse extends JsonResponse
               'message' => $data->getMessage()
             ];
         }
-        return parent::setData($data);
+        parent::setData($data);
+        return $this;
     }
 }

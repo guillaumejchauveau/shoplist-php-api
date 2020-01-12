@@ -14,7 +14,7 @@ class RestRequestFactory
     protected $routes;
     protected $webroot;
 
-    public function __construct(array $routes, string $webroot = '')
+    public function __construct(array $routes, string $webroot)
     {
         $this->routes = $routes;
         $this->webroot = $webroot;

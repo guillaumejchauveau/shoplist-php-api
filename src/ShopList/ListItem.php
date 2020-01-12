@@ -80,7 +80,7 @@ class ListItem implements ResourceInterface, JsonSerializable
         return $listItem;
     }
 
-    public static function getResourceFactory(): Callable
+    public static function getResourceFactory(): callable
     {
         return [self::class, 'createResource'];
     }
@@ -92,7 +92,7 @@ class ListItem implements ResourceInterface, JsonSerializable
             'method' => 'PUT',
             'path' => '/list/{itemId}',
             'action' => 'updateWithListItem',
-            'requestContentClass' => ListItem::class,
+            'requestContentClass' => ListItem::class
           ],
           [
             'method' => 'DELETE',

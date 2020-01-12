@@ -20,10 +20,10 @@ class RequestContentAsResourceArgumentValueResolver implements ArgumentValueReso
     /**
      * @inheritDoc
      */
-    public function supports(Request $request, ArgumentMetadata $argument)
+    public function supports(Request $request, ArgumentMetadata $argument): bool
     {
         if ($request instanceof RestRequest) {
-            $contentClassName = $request->getResourceRequestContentClassName();
+            $contentClassName = $request->getRoute()->getRequestContentClassName();
             if ($contentClassName === null) {
                 return false;
             }
@@ -35,7 +35,7 @@ class RequestContentAsResourceArgumentValueResolver implements ArgumentValueReso
     /**
      * @inheritDoc
      */
-    public function resolve(Request $request, ArgumentMetadata $argument)
+    public function resolve(Request $request, ArgumentMetadata $argument): iterable
     {
         try {
             $resourceClass = new ReflectionClass($argument->getType());

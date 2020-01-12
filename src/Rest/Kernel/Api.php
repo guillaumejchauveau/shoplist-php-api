@@ -29,7 +29,7 @@ class Api
     /**
      * @var Route[]
      */
-    protected $resourceRoutes;
+    protected $routes;
 
     /**
      * Api constructor.
@@ -39,7 +39,7 @@ class Api
      */
     public function __construct(
       array $resources,
-      string $webroot = '',
+      string $webroot,
       ?ContainerInterface $container = null
     ) {
         $container = $container ?? new Container();
@@ -51,22 +51,22 @@ class Api
         $this->argumentResolver = new ArgumentResolver(null, $argumentValueResolvers);
 
         $this->setResources($resources);
-        $requestFactory = new RestRequestFactory($this->resourceRoutes, $webroot);
+        $requestFactory = new RestRequestFactory($this->routes, $webroot);
         RestRequest::setFactory([$requestFactory, 'createRestRequest']);
     }
 
     /**
      * @param string[] $resources
      */
-    protected function setResources(array $resources)
+    protected function setResources(array $resources): void
     {
-        $this->resourceRoutes = [];
+        $this->routes = [];
         foreach ($resources as $resourceClassName) {
             foreach ($resourceClassName::getRoutes() as $route) {
                 if ($route instanceof Route) {
-                    $this->resourceRoutes[] = $route;
+                    $this->routes[] = $route;
                 } elseif (is_array($route)) {
-                    $this->resourceRoutes[] = Route::fromArray(
+                    $this->routes[] = Route::fromArray(
                       $route,
                       $resourceClassName,
                       $route['action'] ?? null
@@ -94,7 +94,10 @@ class Api
         if ($request->getRoute() === null) {
             throw new NotFoundHttpException('No resources corresponding');
         }
-        $resourceFactory = call_user_func([$request->getResourceClassName(), 'getResourceFactory']);
+        /** @var callable $resourceFactory */
+        $resourceFactory = call_user_func(
+          [$request->getRoute()->getResourceClassName(), 'getResourceFactory']
+        );
         $resourceFactoryArgs = $this->argumentResolver->getArguments(
           $request,
           $resourceFactory
@@ -102,10 +105,12 @@ class Api
         try {
             $resource = $resourceFactory(...$resourceFactoryArgs);
 
-            if ($request->getResourceAction() === null) {
+            $actionName = $request->getRoute()->getActionName();
+            if ($actionName === null) {
                 $response = $resource;
             } else {
-                $action = [$resource, $request->getResourceAction()];
+                /** @var callable $action */
+                $action = [$resource, $actionName];
                 $arguments = $this->argumentResolver->getArguments($request, $action);
                 $response = $action(...$arguments);
             }

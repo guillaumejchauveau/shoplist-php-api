@@ -7,14 +7,19 @@ namespace GECU\Rest;
 use GECU\Rest\Kernel\RestRequest;
 use InvalidArgumentException;
 
+/**
+ * Represents a mapping between a URL and a resource.
+ * @package GECU\Rest
+ */
 class Route
 {
     public const PATH_PARAM_BEGIN = '{';
     public const PATH_PARAM_END = '}';
     /**
+     * The
      * @var string
      */
-    protected $resourceClass;
+    protected $resourceClassName;
     /**
      * @var string
      */
@@ -26,22 +31,27 @@ class Route
     /**
      * @var string|null
      */
-    protected $action;
+    protected $actionName;
     /**
      * @var string|null
      */
-    protected $requestContentClass;
+    protected $requestContentClassName;
     /**
      * @var int|null
      */
     protected $status;
+    /**
+     * @var string[]
+     */
+    protected $query;
 
     public function __construct(array $args)
     {
         $this->method = $args['method'];
         $this->setPath($args['path']);
-        $this->requestContentClass = $args['requestContentClass'] ?? null;
+        $this->requestContentClassName = $args['requestContentClass'] ?? null;
         $this->status = $args['status'] ?? null;
+        $this->query = $args['query'] ?? [];
     }
 
     protected function setPath(string $path): void
@@ -62,38 +72,44 @@ class Route
         }
     }
 
+    /**
+     * @param array $args
+     * @param string $resourceClassName
+     * @param string|null $actionName
+     * @return static
+     */
     public static function fromArray(
       array $args,
-      string $resourceClass,
-      ?string $action = null
+      string $resourceClassName,
+      ?string $actionName = null
     ): self {
-        $route = new self($args);
-        $route->setResourceClass($resourceClass);
-        $route->setAction($action);
+        $route = new static($args);
+        $route->setResourceClassName($resourceClassName);
+        $route->setActionName($actionName);
         return $route;
     }
 
-    public function getResourceClass(): string
+    public function getResourceClassName(): string
     {
-        return $this->resourceClass;
+        return $this->resourceClassName;
     }
 
-    public function setResourceClass(string $class): void
+    public function setResourceClassName(string $class): void
     {
-        $this->resourceClass = $class;
+        $this->resourceClassName = $class;
     }
 
     /**
-     * @return string
+     * @return string|null
      */
-    public function getAction(): ?string
+    public function getActionName(): ?string
     {
-        return $this->action;
+        return $this->actionName;
     }
 
-    public function setAction(?string $action): void
+    public function setActionName(?string $action): void
     {
-        $this->action = $action;
+        $this->actionName = $action;
     }
 
     /**
@@ -107,9 +123,9 @@ class Route
     /**
      * @return string
      */
-    public function getRequestContentClass(): ?string
+    public function getRequestContentClassName(): ?string
     {
-        return $this->requestContentClass;
+        return $this->requestContentClassName;
     }
 
     public function match(RestRequest $request): ?array
@@ -119,9 +135,12 @@ class Route
         }
 
         $requestPath = $request->getResourcePath();
+        if ($requestPath[0] === '/') {
+            $requestPath = substr($requestPath, 1);
+        }
         $params = [];
         foreach ($this->pathParts as $pathPart) {
-            if (empty($requestPath)) {
+            if ($requestPath === false || empty($requestPath)) {
                 return null;
             }
             $requestPathPartEnd = strpos($requestPath, '/');
@@ -140,6 +159,13 @@ class Route
         }
         if (!empty($requestPath)) {
             return null;
+        }
+        foreach ($this->query as $queryArgName) {
+            if ($request->query->has($queryArgName)) {
+                $params[$queryArgName] = $request->query->get($queryArgName);
+            } else {
+                $params[$queryArgName] = null;
+            }
         }
         return $params;
     }

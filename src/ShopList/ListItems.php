@@ -32,7 +32,7 @@ class ListItems implements ResourceInterface, JsonSerializable
         return new self($em);
     }
 
-    public static function getResourceFactory(): Callable
+    public static function getResourceFactory(): callable
     {
         return [self::class, 'createResource'];
     }
