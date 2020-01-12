@@ -12,5 +12,5 @@ foreach ($configuration['services'] as $id => $definition) {
     $container->setDefinition($definition->getClass(), $definition);
 }
 
-$api = new Api($configuration['basePath'], $configuration['resources'], $container);
+$api = new Api($configuration['resources'], $container);
 $api->run();

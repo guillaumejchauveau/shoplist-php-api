@@ -4,9 +4,8 @@
 namespace GECU\Rest;
 
 
-use GECU\Rest\Kernel\Api;
+use GECU\Rest\Kernel\RestRequest;
 use InvalidArgumentException;
-use Symfony\Component\HttpFoundation\Request;
 
 class Route
 {
@@ -114,13 +113,13 @@ class Route
         return $this->requestContentClass;
     }
 
-    public function match(Request $request): ?array
+    public function match(RestRequest $request): ?array
     {
         if ($request->getMethod() !== $this->getMethod()) {
             return null;
         }
 
-        $requestPath = $request->attributes->get(Api::REQUEST_ATTRIBUTE_PATH);
+        $requestPath = $request->getResourcePath();
         $params = [];
         foreach ($this->pathParts as $pathPart) {
             if (empty($requestPath)) {

@@ -12,14 +12,7 @@ require 'paths.php';
 
 $config = [
   'db' => require ROOT . DS . 'db_config.php',
-  'doctrine' => Setup::createAnnotationMetadataConfiguration(
-    [APP],
-    true,
-    null,
-    null,
-    false
-  ),
-  'basePath' => '/UK/Web_Applications/Project/API/',
+  'dev' => true,
   'resources' => [
     Items::class,
     Item::class,
@@ -27,6 +20,14 @@ $config = [
     ListItem::class
   ]
 ];
+
+$config['doctrine'] = Setup::createAnnotationMetadataConfiguration(
+  [APP],
+  $config['dev'],
+  null,
+  null,
+  false
+);
 
 $config['services'] = [
   (new Definition(

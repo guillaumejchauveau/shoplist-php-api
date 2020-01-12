@@ -6,10 +6,8 @@ namespace GECU\Rest\Kernel;
 
 use GECU\Rest\Route;
 use InvalidArgumentException;
-use RuntimeException;
 use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Controller\ArgumentResolver;
 use Symfony\Component\HttpKernel\Controller\ArgumentResolverInterface;
@@ -20,10 +18,6 @@ use Throwable;
 
 class Api
 {
-    public const REQUEST_ATTRIBUTE_PATH = 'resourcePath';
-    public const REQUEST_ATTRIBUTE_CLASS = 'resourceClass';
-    public const REQUEST_ATTRIBUTE_ACTION = 'resourceAction';
-    public const REQUEST_ATTRIBUTE_REQUEST_CONTENT_CLASS = 'resourceRequestContentClass';
     /**
      * @var ContainerInterface
      */
@@ -33,30 +27,19 @@ class Api
      */
     protected $argumentResolver;
     /**
-     * @var string
-     */
-    protected $basePath;
-    /**
      * @var Route[]
      */
     protected $resourceRoutes;
 
     /**
      * Api constructor.
-     * @param string $basePath
      * @param string[] $resources
      * @param ContainerInterface|null $container
      */
     public function __construct(
-      string $basePath,
       array $resources,
       ?ContainerInterface $container = null
     ) {
-        if (empty($basePath)) {
-            throw new InvalidArgumentException('Invalid base path');
-        }
-        $this->basePath = $basePath;
-
         $container = $container ?? new Container();
         $this->container = $container;
 
@@ -66,6 +49,8 @@ class Api
         $this->argumentResolver = new ArgumentResolver(null, $argumentValueResolvers);
 
         $this->setResources($resources);
+        $requestFactory = new RestRequestFactory($this->resourceRoutes);
+        RestRequest::setFactory([$requestFactory, 'createRestRequest']);
     }
 
     /**
@@ -74,14 +59,18 @@ class Api
     protected function setResources(array $resources)
     {
         $this->resourceRoutes = [];
-        foreach ($resources as $resource) {
-            foreach ($resource::getRoutes() as $route) {
+        foreach ($resources as $resourceClassName) {
+            foreach ($resourceClassName::getRoutes() as $route) {
                 if ($route instanceof Route) {
                     $this->resourceRoutes[] = $route;
                 } elseif (is_array($route)) {
-                    $this->resourceRoutes[] = Route::fromArray($resource, $route);
+                    $this->resourceRoutes[] = Route::fromArray(
+                      $route,
+                      $resourceClassName,
+                      $route['action'] ?? null
+                    );
                 } else {
-                    throw new RuntimeException('Invalid route');
+                    throw new InvalidArgumentException('Invalid route');
                 }
             }
         }
@@ -89,53 +78,21 @@ class Api
 
     public function run(): void
     {
-        $request = Request::createFromGlobals();
+        $request = RestRequest::createFromGlobals();
         try {
-            $route = $this->prepareRequest($request);
             $response = $this->handleRequest($request);
-            if ($route->getStatus() !== null) {
-                $response->setStatusCode($route->getStatus());
-            }
             $response->send();
         } catch (Throwable $e) {
             $this->handleError($e)->send();
         }
     }
 
-    protected function prepareRequest(Request $request): Route
+    protected function handleRequest(RestRequest $request): Response
     {
-        $path = substr($request->getRequestUri(), strlen($this->basePath));
-        if (!empty($path) && $path[-1] !== Route::PATH_DELIMITER) {
-            $request->attributes->set(self::REQUEST_ATTRIBUTE_PATH, $path);
-            foreach ($this->resourceRoutes as $route) {
-                $match = $route->match($request);
-                if (is_array($match)) {
-                    $request->attributes->set(
-                      self::REQUEST_ATTRIBUTE_CLASS,
-                      $route->getResourceClass()
-                    );
-                    $request->attributes->set(self::REQUEST_ATTRIBUTE_ACTION, $route->getAction());
-                    $request->attributes->set(
-                      self::REQUEST_ATTRIBUTE_REQUEST_CONTENT_CLASS,
-                      $route->getRequestContentClass()
-                    );
-                    foreach ($match as $key => $value) {
-                        $request->attributes->set($key, $value);
-                    }
-
-                    return $route;
-                }
-            }
+        if ($request->getRoute() === null) {
+            throw new NotFoundHttpException('No resources corresponding');
         }
-
-        throw new NotFoundHttpException('No resources corresponding');
-    }
-
-    protected function handleRequest(Request $request): Response
-    {
-        $resourceClass = $request->attributes->get(self::REQUEST_ATTRIBUTE_CLASS);
-        $resourceAction = $request->attributes->get(self::REQUEST_ATTRIBUTE_ACTION);
-        $resourceFactory = call_user_func([$resourceClass, 'getResourceFactory']);
+        $resourceFactory = call_user_func([$request->getResourceClassName(), 'getResourceFactory']);
         $resourceFactoryArgs = $this->argumentResolver->getArguments(
           $request,
           $resourceFactory
@@ -143,15 +100,19 @@ class Api
         try {
             $resource = $resourceFactory(...$resourceFactoryArgs);
 
-            if ($resourceAction === null) {
+            if ($request->getResourceAction() === null) {
                 $response = $resource;
             } else {
-                $action = [$resource, $resourceAction];
+                $action = [$resource, $request->getResourceAction()];
                 $arguments = $this->argumentResolver->getArguments($request, $action);
                 $response = $action(...$arguments);
             }
 
-            return new RestResponse($response);
+            $response = new RestResponse($response);
+            if ($request->getRoute()->getStatus() !== null) {
+                $response->setStatusCode($request->getRoute()->getStatus());
+            }
+            return $response;
         } catch (InvalidArgumentException $e) {
             throw new BadRequestHttpException($e->getMessage());
         }

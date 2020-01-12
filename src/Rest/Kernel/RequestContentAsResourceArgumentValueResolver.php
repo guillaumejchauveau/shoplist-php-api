@@ -22,11 +22,14 @@ class RequestContentAsResourceArgumentValueResolver implements ArgumentValueReso
      */
     public function supports(Request $request, ArgumentMetadata $argument)
     {
-        $resourceClass = $request->attributes->get(Api::REQUEST_ATTRIBUTE_REQUEST_CONTENT_CLASS);
-        if ($resourceClass === null) {
-            return false;
+        if ($request instanceof RestRequest) {
+            $contentClassName = $request->getResourceRequestContentClassName();
+            if ($contentClassName === null) {
+                return false;
+            }
+            return $argument->getType() === $contentClassName;
         }
-        return $argument->getType() === $resourceClass;
+        return false;
     }
 
     /**
@@ -48,7 +51,7 @@ class RequestContentAsResourceArgumentValueResolver implements ArgumentValueReso
             }
             yield $resourceInstance;
         } catch (ReflectionException $e) {
-            throw new RuntimeException('Unexpected invalid resolution arguments');
+            throw new RuntimeException('Unexpected invalid resolution arguments', 0, $e);
         } catch (Throwable $e) {
             throw new BadRequestHttpException($e->getMessage());
         }
