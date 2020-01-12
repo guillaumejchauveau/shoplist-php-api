@@ -34,7 +34,7 @@ class RestRequest extends Request
         $this->resourceRequestContentClassName = null;
         $this->webroot = $webroot;
 
-        $path = substr($this->getRequestUri(), strlen($this->getBasePath()));
+        $path = substr($this->getRequestUri(), strlen($this->getBasePath() . '/'));
         if (!empty($path) && $path[-1] !== '/') {
             $this->resourcePath = $path;
             foreach ($routes as $route) {
