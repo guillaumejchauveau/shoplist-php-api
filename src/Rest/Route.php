@@ -5,7 +5,6 @@ namespace GECU\Rest;
 
 
 use Doctrine\Common\Annotations\Annotation\Target;
-use GECU\Rest\Kernel\Api;
 use GECU\Rest\Kernel\RestRequest;
 use InvalidArgumentException;
 
@@ -19,6 +18,7 @@ use InvalidArgumentException;
  *   @Attribute("path", type="string", required=true),
  *   @Attribute("requestContentClass", type="string"),
  *   @Attribute("status", type="integer"),
+ *   @Attribute("query", type="array<string>")
  * })
  */
 class Route

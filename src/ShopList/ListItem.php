@@ -184,7 +184,7 @@ class ListItem implements JsonSerializable
     /**
      * @throws ORMException
      * @throws OptimisticLockException
-     * @Rest\Route(method = "DELETE", path = "/list/{itemId}")
+     * @Rest\Route(method="DELETE", path="/list/{itemId}")
      */
     public function delete(): void
     {

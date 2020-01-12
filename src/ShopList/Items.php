@@ -11,7 +11,7 @@ use JsonSerializable;
 /**
  * Class Items
  * @package GECU\ShopList
- * @Rest\Route(method = "GET", path = "/items")
+ * @Rest\Route(method="GET", path="/items")
  */
 class Items implements JsonSerializable
 {

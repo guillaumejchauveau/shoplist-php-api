@@ -152,7 +152,7 @@ class Api
             throw new NotFoundHttpException('No resources corresponding');
         }
         /** @var callable $resourceFactory */
-        $resourceFactory = $this->resourceFactories[$request->getResourceClassName()];
+        $resourceFactory = $this->resourceFactories[$request->getRoute()->getResourceClassName()];
         $resourceFactoryArgs = $this->argumentResolver->getArguments(
           $request,
           $resourceFactory
