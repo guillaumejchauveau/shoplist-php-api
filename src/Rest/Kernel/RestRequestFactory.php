@@ -12,10 +12,12 @@ class RestRequestFactory
      * @var Route[]
      */
     protected $routes;
+    protected $webroot;
 
-    public function __construct(array $routes)
+    public function __construct(array $routes, string $webroot = '')
     {
         $this->routes = $routes;
+        $this->webroot = $webroot;
     }
 
     public function createRestRequest(
@@ -35,7 +37,8 @@ class RestRequestFactory
           $files,
           $server,
           $content,
-          $this->routes
+          $this->routes,
+          $this->webroot
         );
     }
 }

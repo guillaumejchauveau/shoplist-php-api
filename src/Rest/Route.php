@@ -9,7 +9,6 @@ use InvalidArgumentException;
 
 class Route
 {
-    public const PATH_DELIMITER = '/';
     public const PATH_PARAM_BEGIN = '{';
     public const PATH_PARAM_END = '}';
     /**
@@ -48,11 +47,11 @@ class Route
     protected function setPath(string $path): void
     {
         $this->pathParts = [];
-        if (empty($path) || $path[0] !== self::PATH_DELIMITER) {
+        if (empty($path) || $path[0] !== '/') {
             throw new InvalidArgumentException('Invalid path');
         }
         $path = substr($path, 1);
-        foreach (explode(self::PATH_DELIMITER, $path) as $part) {
+        foreach (explode('/', $path) as $part) {
             if ($part[0] === self::PATH_PARAM_BEGIN && $part[-1] === self::PATH_PARAM_END) {
                 $this->pathParts[] = [
                   trim($part, self::PATH_PARAM_BEGIN . self::PATH_PARAM_END)
@@ -125,7 +124,7 @@ class Route
             if (empty($requestPath)) {
                 return null;
             }
-            $requestPathPartEnd = strpos($requestPath, self::PATH_DELIMITER);
+            $requestPathPartEnd = strpos($requestPath, '/');
             if ($requestPathPartEnd !== false) {
                 $requestPathPart = substr($requestPath, 0, $requestPathPartEnd);
                 $requestPath = substr_replace($requestPath, '', 0, $requestPathPartEnd + 1);
@@ -162,7 +161,7 @@ class Route
     {
         $path = '';
         foreach ($this->pathParts as $part) {
-            $path .= self::PATH_DELIMITER;
+            $path .= '/';
             if (is_array($part)) {
                 $path .= self::PATH_PARAM_BEGIN . $part . self::PATH_PARAM_END;
             } else {

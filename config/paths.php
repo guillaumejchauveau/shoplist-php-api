@@ -23,7 +23,11 @@ define('APP', ROOT . DS . APP_DIR . DS);
  * Path to the config directory.
  */
 define('CONFIG', ROOT . DS . 'config' . DS);
+/**
+ * Webroot directory relative to the root directory.
+ */
+define('WWW', 'webroot');
 /*
  * File path to the webroot directory.
  */
-define('WWW_ROOT', ROOT . DS . 'webroot' . DS);
+define('WWW_ROOT', ROOT . DS . WWW . DS);

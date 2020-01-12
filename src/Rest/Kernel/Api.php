@@ -34,10 +34,12 @@ class Api
     /**
      * Api constructor.
      * @param string[] $resources
+     * @param string $webroot
      * @param ContainerInterface|null $container
      */
     public function __construct(
       array $resources,
+      string $webroot = '',
       ?ContainerInterface $container = null
     ) {
         $container = $container ?? new Container();
@@ -49,7 +51,7 @@ class Api
         $this->argumentResolver = new ArgumentResolver(null, $argumentValueResolvers);
 
         $this->setResources($resources);
-        $requestFactory = new RestRequestFactory($this->resourceRoutes);
+        $requestFactory = new RestRequestFactory($this->resourceRoutes, $webroot);
         RestRequest::setFactory([$requestFactory, 'createRestRequest']);
     }
 

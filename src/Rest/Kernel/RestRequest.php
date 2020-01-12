@@ -4,7 +4,6 @@
 namespace GECU\Rest\Kernel;
 
 
-use GECU\Rest\Route;
 use Symfony\Component\HttpFoundation\Request;
 
 class RestRequest extends Request
@@ -14,6 +13,7 @@ class RestRequest extends Request
     protected $resourceClassName;
     protected $resourceAction;
     protected $resourceRequestContentClassName;
+    protected $webroot;
 
     public function __construct(
       array $query = [],
@@ -23,7 +23,8 @@ class RestRequest extends Request
       array $files = [],
       array $server = [],
       $content = null,
-      $routes = []
+      $routes = [],
+      string $webroot = ''
     ) {
         parent::__construct($query, $request, $attributes, $cookies, $files, $server, $content);
         $this->route = null;
@@ -31,12 +32,10 @@ class RestRequest extends Request
         $this->resourceClassName = null;
         $this->resourceAction = null;
         $this->resourceRequestContentClassName = null;
+        $this->webroot = $webroot;
 
-        $path = substr(
-          $this->getRequestUri(),
-          strlen('/UK/Web_Applications/Project/API/')
-        );  // TODO
-        if (!empty($path) && $path[-1] !== Route::PATH_DELIMITER) {
+        $path = substr($this->getRequestUri(), strlen($this->getBasePath()));
+        if (!empty($path) && $path[-1] !== '/') {
             $this->resourcePath = $path;
             foreach ($routes as $route) {
                 $match = $route->match($this);
@@ -52,6 +51,16 @@ class RestRequest extends Request
                 }
             }
         }
+    }
+
+    protected function prepareBaseUrl()
+    {
+        $base = dirname($this->server->get('PHP_SELF'));
+        $indexPos = strpos($base, '/' . $this->webroot);
+        if ($indexPos !== false) {
+            $base = substr($base, 0, $indexPos);
+        }
+        return $base;
     }
 
     /**
