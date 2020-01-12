@@ -105,7 +105,7 @@ class Api
                     if ($factory !== null) {
                         if ($resourceFactory !== null) {
                             throw new InvalidArgumentException(
-                              'Resource must have only one constructor'
+                              'Resource must have only one factory'
                             );
                         }
                         $resourceFactory = $method->getName();
@@ -123,7 +123,7 @@ class Api
                 }
 
                 if ($resourceFactory === null) {
-                    throw new InvalidArgumentException('Resource must have one constructor');
+                    throw new InvalidArgumentException('Resource must have one factory');
                 }
                 $this->resourceFactories[$resourceClassName] = [
                   $resourceClassName,
@@ -151,7 +151,7 @@ class Api
         if ($request->getRoute() === null) {
             throw new NotFoundHttpException('No resources corresponding');
         }
-        $resourceFactory = call_user_func([$request->getResourceClassName(), 'getResourceFactory']);
+        $resourceFactory = $this->resourceFactories[$request->getResourceClassName()];
         $resourceFactoryArgs = $this->argumentResolver->getArguments(
           $request,
           $resourceFactory
