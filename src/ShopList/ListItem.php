@@ -11,12 +11,14 @@ use GECU\Rest;
 use InvalidArgumentException;
 use JsonSerializable;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use TypeError;
 
 /**
  * Class ListItem
  * @package GECU\ShopList
  * @ORM\Entity
  * @ORM\Table(name="list")
+ * @Rest\Route(method="GET", path="/list/{itemId}")
  */
 class ListItem implements JsonSerializable
 {
@@ -120,7 +122,11 @@ class ListItem implements JsonSerializable
     public function updateWithListItem(ListItem $listItem): self
     {
         $listItem->attachEntityManager($this->em);
-        $listItem->updateItem();
+        try {
+            $listItem->refresh();
+        } catch (TypeError $e) {
+            throw new InvalidArgumentException('Invalid list item', 0, $e);
+        }
         if ($listItem->getItemId() !== $this->getItemId()) {
             throw new InvalidArgumentException('Item ID cannot be updated');
         }
@@ -131,8 +137,11 @@ class ListItem implements JsonSerializable
         return $this;
     }
 
-    public function updateItem(): void
+    public function refresh(): void
     {
+        $this->setItemId($this->itemId);
+        $this->setAmount($this->amount);
+        $this->setPosition($this->position);
         $this->setItem($this->em->getRepository(Item::class)->find($this->itemId));
     }
 

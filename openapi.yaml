@@ -36,7 +36,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ListItem'
+                $ref: '#/components/schemas/Item'
         '404':
           $ref: '#/components/responses/NotFound'
   /list:
@@ -79,6 +79,19 @@ paths:
         required: true
         schema:
           type: integer
+    get:
+      tags:
+        - list
+      description: Return one list item.
+      responses:
+        '200':
+          description: OK.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ListItem'
+        '404':
+          $ref: '#/components/responses/NotFound'
     put:
       tags:
         - list
@@ -145,7 +158,7 @@ components:
         position:
           type: integer
           description: >-
-            Can be positive or negative. List items with the same order property
+            Can be positive or negative. List items with the same position
             will be ordered by itemId.
       example:
         itemId: 3
@@ -154,8 +167,6 @@ components:
     Error:
       type: object
       properties:
-        code:
-          type: integer
         message:
           type: string
 

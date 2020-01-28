@@ -15,6 +15,7 @@ use ReflectionClass;
 use ReflectionException;
 use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Controller\ArgumentResolver;
 use Symfony\Component\HttpKernel\Controller\ArgumentResolverInterface;
@@ -148,6 +149,13 @@ class Api
 
     protected function handleRequest(RestRequest $request): Response
     {
+        if ($request->isMethod(Request::METHOD_OPTIONS)) {
+            return new RestResponse(
+              null, Response::HTTP_NO_CONTENT, [
+                    'Access-Control-Allow-Methods' => '*'
+                  ]
+            );
+        }
         if ($request->getRoute() === null) {
             throw new NotFoundHttpException('No resources corresponding');
         }

@@ -11,6 +11,7 @@ use GECU\Rest;
 use InvalidArgumentException;
 use JsonSerializable;
 use Symfony\Component\HttpFoundation\Response;
+use TypeError;
 
 /**
  * Class ListItems
@@ -54,7 +55,11 @@ class ListItems implements JsonSerializable
     public function addListItem(ListItem $listItem): ListItem
     {
         $listItem->attachEntityManager($this->em);
-        $listItem->updateItem();
+        try {
+            $listItem->refresh();
+        } catch (TypeError $e) {
+            throw new InvalidArgumentException('Invalid list item', 0, $e);
+        }
         if ($this->exists($listItem)) {
             throw new InvalidArgumentException('List item already created');
         }

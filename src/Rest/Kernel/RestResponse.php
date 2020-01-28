@@ -15,6 +15,7 @@ class RestResponse extends JsonResponse
     public function __construct($data = null, int $status = self::HTTP_OK, array $headers = [])
     {
         parent::__construct($data, $status, $headers, false);
+        $this->headers->set('Access-Control-Allow-Origin', '*');
 
         // Parent constructor will call RestResponse::setData with $data = [] if $data is null.
         if ($data === null) {
