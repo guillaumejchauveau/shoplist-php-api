@@ -4,15 +4,16 @@
 namespace GECU\ShopList;
 
 use Doctrine\ORM\Mapping as ORM;
-use GECU\Rest\ResourceInterface;
+use GECU\Rest;
 use JsonSerializable;
 
 /**
  * Class Item
  * @ORM\Entity
  * @ORM\Table(name="items")
+ * @Rest\Route(method="GET", path="/items/{id}")
  */
-class Item implements ResourceInterface, JsonSerializable
+class Item implements JsonSerializable
 {
     /**
      * @ORM\Id
@@ -33,19 +34,6 @@ class Item implements ResourceInterface, JsonSerializable
     public static function getResourceFactory()
     {
         return 'GECU\ShopList\Items::getItem';
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public static function getRoutes(): array
-    {
-        return [
-          [
-            'method' => 'GET',
-            'path' => '/items/{id}'
-          ]
-        ];
     }
 
     /**

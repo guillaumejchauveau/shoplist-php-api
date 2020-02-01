@@ -5,7 +5,9 @@ namespace GECU\ShopList;
 
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\Mapping as ORM;
-use GECU\Rest\ResourceInterface;
+use Doctrine\ORM\OptimisticLockException;
+use Doctrine\ORM\ORMException;
+use GECU\Rest;
 use InvalidArgumentException;
 use JsonSerializable;
 use TypeError;
@@ -14,8 +16,9 @@ use TypeError;
  * Class ListItem
  * @ORM\Entity
  * @ORM\Table(name="list")
+ * @Rest\Route(method="GET", path="/list/{itemId}")
  */
-class ListItem implements ResourceInterface, JsonSerializable
+class ListItem implements JsonSerializable
 {
     /**
      * @ORM\Id
@@ -41,37 +44,6 @@ class ListItem implements ResourceInterface, JsonSerializable
      */
     protected $position;
 
-    /**
-     * @inheritDoc
-     */
-    public static function getResourceFactory()
-    {
-        return 'GECU\ShopList\ListItems::getListItem';
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public static function getRoutes(): array
-    {
-        return [
-          [
-            'method' => 'GET',
-            'path' => '/list/{itemId}'
-          ],
-          [
-            'method' => 'PUT',
-            'path' => '/list/{itemId}',
-            'action' => 'updateWithListItem',
-            'requestContentFactory' => 'GECU\ShopList\ListItem::create'
-          ],
-          [
-            'method' => 'DELETE',
-            'path' => '/list/{itemId}',
-            'action' => 'delete'
-          ]
-        ];
-    }
 
     public static function create(
       EntityManager $em,
@@ -166,6 +138,11 @@ class ListItem implements ResourceInterface, JsonSerializable
         return $this;
     }
 
+    /**
+     * @throws ORMException
+     * @throws OptimisticLockException
+     * @Rest\Route(method="DELETE", path="/list/{itemId}")
+     */
     public function delete(EntityManager $em): void
     {
         $em->remove($this);
