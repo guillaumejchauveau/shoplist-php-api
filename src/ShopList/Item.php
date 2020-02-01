@@ -3,15 +3,12 @@
 
 namespace GECU\ShopList;
 
-use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\Mapping as ORM;
 use GECU\Rest\ResourceInterface;
 use JsonSerializable;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
  * Class Item
- * @package GECU\ShopList
  * @ORM\Entity
  * @ORM\Table(name="items")
  */
@@ -31,38 +28,16 @@ class Item implements ResourceInterface, JsonSerializable
     protected $name;
 
     /**
-     * @var EntityManager
+     * @inheritDoc
      */
-    protected $em;
-
-    public function __construct(EntityManager $em)
+    public static function getResourceFactory()
     {
-        $this->attachEntityManager($em);
+        return [Items::class, 'getItem'];
     }
 
-    public function attachEntityManager(EntityManager $em): void
-    {
-        $this->em = $em;
-    }
-
-    public static function createResource(EntityManager $em, int $id = null)
-    {
-        if ($id === null) {
-            return new self($em);
-        }
-        $item = $em->getRepository(self::class)->find($id);
-        if ($item === null) {
-            throw new NotFoundHttpException('Invalid item ID');
-        }
-        $item->attachEntityManager($em);
-        return $item;
-    }
-
-    public static function getResourceFactory(): callable
-    {
-        return [self::class, 'createResource'];
-    }
-
+    /**
+     * @inheritDoc
+     */
     public static function getRoutes(): array
     {
         return [
@@ -94,8 +69,9 @@ class Item implements ResourceInterface, JsonSerializable
         return $this->name;
     }
 
-    public function setName(string $name): void
+    public function setName(string $name): self
     {
         $this->name = $name;
+        return $this;
     }
 }

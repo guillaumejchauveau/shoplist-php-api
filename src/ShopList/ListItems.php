@@ -9,7 +9,6 @@ use GECU\Rest\ResourceInterface;
 use InvalidArgumentException;
 use JsonSerializable;
 use Symfony\Component\HttpFoundation\Response;
-use TypeError;
 
 class ListItems implements ResourceInterface, JsonSerializable
 {
@@ -20,24 +19,20 @@ class ListItems implements ResourceInterface, JsonSerializable
 
     public function __construct(EntityManager $em)
     {
-        $this->attachEntityManager($em);
-    }
-
-    public function attachEntityManager(EntityManager $em): void
-    {
         $this->em = $em;
     }
 
-    public static function createResource(EntityManager $em): self
+    /**
+     * @inheritDoc
+     */
+    public static function getResourceFactory()
     {
-        return new self($em);
+        return [ListItems::class, '__construct'];
     }
 
-    public static function getResourceFactory(): callable
-    {
-        return [self::class, 'createResource'];
-    }
-
+    /**
+     * @inheritDoc
+     */
     public static function getRoutes(): array
     {
         return [
@@ -49,26 +44,35 @@ class ListItems implements ResourceInterface, JsonSerializable
             'method' => 'POST',
             'path' => '/list',
             'action' => 'addListItem',
-            'requestContentClass' => ListItem::class,
+            'requestContentFactory' => [ListItem::class, 'create'],
             'status' => Response::HTTP_CREATED
           ]
         ];
     }
 
+    public function getListItem(int $itemId): ListItem
+    {
+        $item = $this->em->getRepository(Item::class)->find($itemId);
+        if ($item === null) {
+            throw new InvalidArgumentException('Invalid item ID');
+        }
+        $listItem = $this->em->getRepository(ListItem::class)->findOneBy(
+          [
+            'item' => $item
+          ]
+        );
+        if ($listItem === null) {
+            throw new InvalidArgumentException('Item is not in the list');
+        }
+        return $listItem;
+    }
+
     public function addListItem(ListItem $listItem): ListItem
     {
-        $listItem->attachEntityManager($this->em);
-        try {
-            $listItem->refresh();
-        } catch (TypeError $e) {
-            throw new InvalidArgumentException('Invalid list item', 0, $e);
-        }
         if ($this->exists($listItem)) {
             throw new InvalidArgumentException('List item already created');
         }
-        $this->em->persist($listItem);
-        $this->em->flush();
-        return $listItem;
+        return $listItem->save($this->em);
     }
 
     public function exists(ListItem $listItem): bool

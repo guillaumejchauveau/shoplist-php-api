@@ -20,7 +20,7 @@ class RestRequest extends Request
       array $files = [],
       array $server = [],
       $content = null,
-      array $routes = [],
+      iterable $routes = [],
       string $webroot = ''
     ) {
         parent::__construct($query, $request, $attributes, $cookies, $files, $server, $content);

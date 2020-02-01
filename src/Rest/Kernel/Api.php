@@ -4,14 +4,16 @@
 namespace GECU\Rest\Kernel;
 
 
+use GECU\Rest\Helper\ArgumentResolver;
+use GECU\Rest\Helper\FactoryHelper;
+use GECU\Rest\Helper\RequestContentValueResolver;
+use GECU\Rest\Helper\ServiceValueResolver;
 use GECU\Rest\Route;
 use InvalidArgumentException;
 use Symfony\Component\DependencyInjection\Container;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Controller\ArgumentResolver;
-use Symfony\Component\HttpKernel\Controller\ArgumentResolverInterface;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -24,7 +26,7 @@ class Api
      */
     protected $container;
     /**
-     * @var ArgumentResolverInterface
+     * @var ArgumentResolver
      */
     protected $argumentResolver;
     /**
@@ -39,16 +41,23 @@ class Api
      * @param ContainerInterface|null $container
      */
     public function __construct(
-      array $resources,
+      iterable $resources,
       string $webroot,
       ?ContainerInterface $container = null
     ) {
-        $container = $container ?? new Container();
-        $this->container = $container;
+        $this->container = $container ?? new Container();
 
-        $argumentValueResolvers = ArgumentResolver::getDefaultArgumentValueResolvers();
-        $argumentValueResolvers[] = new ServiceArgumentValueResolver($this->container);
-        $argumentValueResolvers[] = new RequestContentAsResourceArgumentValueResolver();
+        $serviceArgumentValueResolver = new ServiceValueResolver($this->container);
+        $argumentValueResolvers = [
+          $serviceArgumentValueResolver,
+          new RequestContentValueResolver(
+            [$serviceArgumentValueResolver]
+          ),
+        ];
+        array_push(
+          $argumentValueResolvers,
+          ...ArgumentResolver::getDefaultArgumentValueResolvers()
+        );
         $this->argumentResolver = new ArgumentResolver(null, $argumentValueResolvers);
 
         $this->setResources($resources);
@@ -57,9 +66,9 @@ class Api
     }
 
     /**
-     * @param string[] $resources
+     * @param iterable $resources
      */
-    protected function setResources(array $resources): void
+    protected function setResources(iterable $resources): void
     {
         $this->routes = [];
         foreach ($resources as $resourceClassName) {
@@ -102,17 +111,15 @@ class Api
         if ($request->getRoute() === null) {
             throw new NotFoundHttpException('No resources corresponding');
         }
-        /** @var callable $resourceFactory */
-        $resourceFactory = call_user_func(
-          [$request->getRoute()->getResourceClassName(), 'getResourceFactory']
-        );
-        $resourceFactoryArgs = $this->argumentResolver->getArguments(
-          $request,
-          $resourceFactory
-        );
         try {
-            $resource = $resourceFactory(...$resourceFactoryArgs);
-
+            $factory = call_user_func(
+              [$request->getRoute()->getResourceClassName(), 'getResourceFactory']
+            );
+            $resource = FactoryHelper::invokeFactory($factory, $request, $this->argumentResolver);
+        } catch (InvalidArgumentException $e) {
+            throw new NotFoundHttpException($e->getMessage());
+        }
+        try {
             $actionName = $request->getRoute()->getActionName();
             if ($actionName === null) {
                 $response = $resource;
@@ -143,13 +150,5 @@ class Api
             );
         }
         return new RestResponse($throwable, Response::HTTP_INTERNAL_SERVER_ERROR);
-    }
-
-    /**
-     * @return ContainerInterface
-     */
-    public function getContainer(): ContainerInterface
-    {
-        return $this->container;
     }
 }

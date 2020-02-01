@@ -4,6 +4,7 @@
 namespace GECU\Rest;
 
 
+use GECU\Rest\Helper\FactoryHelper;
 use GECU\Rest\Kernel\RestRequest;
 use InvalidArgumentException;
 
@@ -33,9 +34,13 @@ class Route
      */
     protected $actionName;
     /**
+     * @var mixed|null
+     */
+    protected $requestContentFactory;
+    /**
      * @var string|null
      */
-    protected $requestContentClassName;
+    protected $requestContentType;
     /**
      * @var int|null
      */
@@ -49,7 +54,7 @@ class Route
     {
         $this->method = $args['method'];
         $this->setPath($args['path']);
-        $this->requestContentClassName = $args['requestContentClass'] ?? null;
+        $this->setRequestContentFactory($args['requestContentFactory'] ?? null);
         $this->status = $args['status'] ?? null;
         $this->query = $args['query'] ?? [];
     }
@@ -121,11 +126,30 @@ class Route
     }
 
     /**
-     * @return string
+     * @return mixed|null
      */
-    public function getRequestContentClassName(): ?string
+    public function getRequestContentFactory()
     {
-        return $this->requestContentClassName;
+        return $this->requestContentFactory;
+    }
+
+    protected function setRequestContentFactory($contentFactory): void
+    {
+        $this->requestContentFactory = $contentFactory;
+        $this->requestContentType = null;
+        if ($contentFactory === null) {
+            return;
+        }
+        $returnType = FactoryHelper::getFactoryReturnType($contentFactory);
+        if ($returnType === null) {
+            throw new InvalidArgumentException('Invalid content request factory');
+        }
+        $this->requestContentType = $returnType;
+    }
+
+    public function getRequestContentType(): ?string
+    {
+        return $this->requestContentType;
     }
 
     public function match(RestRequest $request): ?array

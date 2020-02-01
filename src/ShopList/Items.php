@@ -6,6 +6,7 @@ namespace GECU\ShopList;
 
 use Doctrine\ORM\EntityManager;
 use GECU\Rest\ResourceInterface;
+use InvalidArgumentException;
 use JsonSerializable;
 
 class Items implements ResourceInterface, JsonSerializable
@@ -17,24 +18,20 @@ class Items implements ResourceInterface, JsonSerializable
 
     public function __construct(EntityManager $em)
     {
-        $this->attachEntityManager($em);
-    }
-
-    public function attachEntityManager(EntityManager $em): void
-    {
         $this->em = $em;
     }
 
-    public static function createResource(EntityManager $em): self
+    /**
+     * @inheritDoc
+     */
+    public static function getResourceFactory()
     {
-        return new self($em);
+        return [self::class, '__construct'];
     }
 
-    public static function getResourceFactory(): callable
-    {
-        return [self::class, 'createResource'];
-    }
-
+    /**
+     * @inheritDoc
+     */
     public static function getRoutes(): array
     {
         return [
@@ -56,5 +53,14 @@ class Items implements ResourceInterface, JsonSerializable
     public function getCollection(): array
     {
         return $this->em->getRepository(Item::class)->findAll();
+    }
+
+    public function getItem(int $id): Item
+    {
+        $item = $this->em->getRepository(Item::class)->find($id);
+        if ($item === null) {
+            throw new InvalidArgumentException('Invalid item ID');
+        }
+        return $item;
     }
 }

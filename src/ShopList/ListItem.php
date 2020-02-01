@@ -8,12 +8,10 @@ use Doctrine\ORM\Mapping as ORM;
 use GECU\Rest\ResourceInterface;
 use InvalidArgumentException;
 use JsonSerializable;
-use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use TypeError;
 
 /**
  * Class ListItem
- * @package GECU\ShopList
  * @ORM\Entity
  * @ORM\Table(name="list")
  */
@@ -28,13 +26,10 @@ class ListItem implements ResourceInterface, JsonSerializable
     protected $id;
     /**
      * @ORM\OneToOne(targetEntity="Item")
+     * @ORM\JoinColumn(nullable=false)
      * @var Item
      */
     protected $item;
-    /**
-     * @var int
-     */
-    protected $itemId;
     /**
      * @ORM\Column(type="integer")
      * @var int
@@ -45,47 +40,18 @@ class ListItem implements ResourceInterface, JsonSerializable
      * @var int
      */
     protected $position;
+
     /**
-     * @var EntityManager
+     * @inheritDoc
      */
-    protected $em;
-
-    public function __construct(EntityManager $em)
+    public static function getResourceFactory()
     {
-        $this->attachEntityManager($em);
+        return [ListItems::class, 'getListItem'];
     }
 
-    public function attachEntityManager(EntityManager $em): void
-    {
-        $this->em = $em;
-    }
-
-    public static function createResource(EntityManager $em, int $itemId = null)
-    {
-        if ($itemId === null) {
-            return new self($em);
-        }
-        $item = $em->getRepository(Item::class)->find($itemId);
-        if ($item === null) {
-            throw new NotFoundHttpException('Invalid item ID');
-        }
-        $listItem = $em->getRepository(self::class)->findOneBy(
-          [
-            'item' => $item
-          ]
-        );
-        if ($listItem === null) {
-            throw new NotFoundHttpException('Item is not in the list');
-        }
-        $listItem->attachEntityManager($em);
-        return $listItem;
-    }
-
-    public static function getResourceFactory(): callable
-    {
-        return [self::class, 'createResource'];
-    }
-
+    /**
+     * @inheritDoc
+     */
     public static function getRoutes(): array
     {
         return [
@@ -97,7 +63,7 @@ class ListItem implements ResourceInterface, JsonSerializable
             'method' => 'PUT',
             'path' => '/list/{itemId}',
             'action' => 'updateWithListItem',
-            'requestContentClass' => ListItem::class
+            'requestContentFactory' => [ListItem::class, 'create']
           ],
           [
             'method' => 'DELETE',
@@ -107,9 +73,36 @@ class ListItem implements ResourceInterface, JsonSerializable
         ];
     }
 
+    public static function create(
+      EntityManager $em,
+      int $itemId,
+      int $amount,
+      int $position
+    ): self {
+        $listItem = new self();
+        $listItem->setItem($em->getRepository(Item::class)->find($itemId));
+        $listItem->setAmount($amount);
+        $listItem->setPosition($position);
+        return $listItem;
+    }
+
     public function getId(): int
     {
         return $this->id;
+    }
+
+    public function updateWithListItem(EntityManager $em, ListItem $listItem): self
+    {
+        if ($listItem->getItem()->getId() !== $this->getItem()->getId()) {
+            throw new InvalidArgumentException('Item ID cannot be updated');
+        }
+        try {
+            $this->setPosition($listItem->getPosition());
+            $this->setAmount($listItem->getAmount());
+        } catch (TypeError $e) {
+            throw new InvalidArgumentException('Invalid list item', 0, $e);
+        }
+        return $this->save($em);
     }
 
     public function getItem(): Item
@@ -119,50 +112,12 @@ class ListItem implements ResourceInterface, JsonSerializable
 
     /**
      * @param Item $item
+     * @return ListItem
      */
-    public function setItem(?Item $item): void
+    public function setItem(Item $item): self
     {
-        if ($item === null) {
-            throw new InvalidArgumentException('Invalid item');
-        }
         $this->item = $item;
-        $this->itemId = $item->getId();
-    }
-
-    public function updateWithListItem(ListItem $listItem): self
-    {
-        $listItem->attachEntityManager($this->em);
-        try {
-            $listItem->refresh();
-        } catch (TypeError $e) {
-            throw new InvalidArgumentException('Invalid list item', 0, $e);
-        }
-        if ($listItem->getItemId() !== $this->getItemId()) {
-            throw new InvalidArgumentException('Item ID cannot be updated');
-        }
-        $this->setPosition($listItem->getPosition());
-        $this->setAmount($listItem->getAmount());
-        $this->em->persist($this);
-        $this->em->flush();
         return $this;
-    }
-
-    public function refresh(): void
-    {
-        $this->setItemId($this->itemId);
-        $this->setAmount($this->amount);
-        $this->setPosition($this->position);
-        $this->setItem($this->em->getRepository(Item::class)->find($this->itemId));
-    }
-
-    public function getItemId(): int
-    {
-        return $this->item->getId();
-    }
-
-    public function setItemId(int $itemId): void
-    {
-        $this->itemId = $itemId;
     }
 
     /**
@@ -175,10 +130,12 @@ class ListItem implements ResourceInterface, JsonSerializable
 
     /**
      * @param int $position
+     * @return ListItem
      */
-    public function setPosition(int $position): void
+    public function setPosition(int $position): self
     {
         $this->position = $position;
+        return $this;
     }
 
     /**
@@ -191,19 +148,28 @@ class ListItem implements ResourceInterface, JsonSerializable
 
     /**
      * @param int $amount
+     * @return ListItem
      */
-    public function setAmount(int $amount): void
+    public function setAmount(int $amount): self
     {
         if ($amount < 1) {
             throw new InvalidArgumentException('Amount must be greater than 0');
         }
         $this->amount = $amount;
+        return $this;
     }
 
-    public function delete(): void
+    public function save(EntityManager $em): self
     {
-        $this->em->remove($this);
-        $this->em->flush();
+        $em->persist($this);
+        $em->flush();
+        return $this;
+    }
+
+    public function delete(EntityManager $em): void
+    {
+        $em->remove($this);
+        $em->flush();
     }
 
     /**
@@ -212,7 +178,7 @@ class ListItem implements ResourceInterface, JsonSerializable
     public function jsonSerialize()
     {
         return [
-          'itemId' => $this->getItemId(),
+          'itemId' => $this->getItem()->getId(),
           'amount' => $this->getAmount(),
           'position' => $this->getPosition()
         ];
