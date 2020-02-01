@@ -4,15 +4,17 @@
 namespace GECU\Rest\Kernel;
 
 
-use GECU\Rest\Helper\ArgumentResolver;
-use GECU\Rest\Helper\FactoryHelper;
-use GECU\Rest\Helper\RequestContentValueResolver;
-use GECU\Rest\Helper\ServiceValueResolver;
 use Doctrine\Common\Annotations\AnnotationException;
 use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Annotations\AnnotationRegistry;
 use Doctrine\Common\Annotations\Reader;
+use GECU\Rest\Helper\ArgumentResolver;
+use GECU\Rest\Helper\FactoryHelper;
+use GECU\Rest\Helper\ManufacturableTrait;
+use GECU\Rest\Helper\RequestContentValueResolver;
+use GECU\Rest\Helper\ServiceValueResolver;
 use GECU\Rest\ResourceFactory;
+use GECU\Rest\RoutableTrait;
 use GECU\Rest\Route;
 use InvalidArgumentException;
 use ReflectionClass;
@@ -89,69 +91,17 @@ class Api
     /**
      * @param string[] $resources
      */
-    protected function setResourcesAnno(array $resources): void
+    protected function setResources(iterable $resources): void
     {
         $this->routes = [];
         $this->resourceFactories = [];
         foreach ($resources as $resourceClassName) {
             try {
                 $resourceClass = new ReflectionClass($resourceClassName);
-                $resourceFactory = null;
-
-                $resourceRoute = $this->annotationReader->getClassAnnotation(
-                  $resourceClass,
-                  Route::class
-                );
-                if ($resourceRoute !== null) {
-                    $resourceRoute->setResourceClassName($resourceClassName);
-                    $this->routes[] = $resourceRoute;
-                }
-                foreach ($resourceClass->getMethods() as $method) {
-                    $factory = $this->annotationReader->getMethodAnnotation(
-                      $method,
-                      ResourceFactory::class
-                    );
-                    if ($factory !== null) {
-                        if ($resourceFactory !== null) {
-                            throw new InvalidArgumentException(
-                              'Resource must have only one factory'
-                            );
-                        }
-                        $resourceFactory = $method->getName();
-                        continue;
-                    }
-                    $resourceRoute = $this->annotationReader->getMethodAnnotation(
-                      $method,
-                      Route::class
-                    );
-                    if ($resourceRoute !== null) {
-                        $resourceRoute->setResourceClassName($resourceClassName);
-                        $resourceRoute->setActionName($method->getName());
-                        $this->routes[] = $resourceRoute;
-                    }
-                }
-
-                if ($resourceFactory === null) {
-                    throw new InvalidArgumentException('Resource must have one factory');
-                }
-                $this->resourceFactories[$resourceClassName] = [
-                  $resourceClassName,
-                  $resourceFactory
-                ];
             } catch (ReflectionException $e) {
-                throw new InvalidArgumentException('Resource must be a valid class name');
+                throw new InvalidArgumentException('Invalid resource class name');
             }
-        }
-    }
-
-    /**
-     * @param string[] $resources
-     */
-    protected function setResources(iterable $resources): void
-    {
-        $this->routes = [];
-        foreach ($resources as $resourceClassName) {
-            $resourceRoutes = call_user_func([$resourceClassName, 'getRoutes']);
+            $resourceRoutes = $this->getResourceClassRoutes($resourceClass);
             foreach ($resourceRoutes as $route) {
                 if ($route instanceof Route) {
                     $this->routes[] = $route;
@@ -165,7 +115,84 @@ class Api
                     throw new InvalidArgumentException('Invalid route');
                 }
             }
+            $this->resourceFactories[$resourceClassName] = $this->getResourceClassFactory(
+              $resourceClass
+            );
         }
+    }
+
+    protected function getResourceClassRoutes(ReflectionClass $resourceClass): iterable
+    {
+        if (in_array(RoutableTrait::class, $resourceClass->getTraitNames())) {
+            /** @var RoutableTrait $resourceClassName */
+            $resourceClassName = $resourceClass->getName();
+            return $resourceClassName::getRoutes();
+        }
+        $resourceClassName = $resourceClass->getName();
+        $routes = [];
+        $resourceRoute = $this->annotationReader->getClassAnnotation(
+          $resourceClass,
+          Route::class
+        );
+        if ($resourceRoute !== null) {
+            $resourceRoute->setResourceClassName($resourceClassName);
+            $routes[] = $resourceRoute;
+        }
+        foreach ($resourceClass->getMethods() as $method) {
+            $resourceRoute = $this->annotationReader->getMethodAnnotation(
+              $method,
+              Route::class
+            );
+            if ($resourceRoute !== null) {
+                $resourceRoute->setResourceClassName($resourceClassName);
+                $resourceRoute->setActionName($method->getName());
+                $routes[] = $resourceRoute;
+            }
+        }
+        return $routes;
+    }
+
+    /**
+     * @param ReflectionClass $resourceClass
+     * @return mixed Pseudo callable
+     * @see FactoryHelper
+     */
+    protected function getResourceClassFactory(ReflectionClass $resourceClass)
+    {
+        if (in_array(ManufacturableTrait::class, $resourceClass->getTraitNames())) {
+            /** @var ManufacturableTrait $resourceClassName */
+            $resourceClassName = $resourceClass->getName();
+            return $resourceClassName::getFactory() ?? [$resourceClassName, '__construct'];
+        }
+        $resourceClassName = $resourceClass->getName();
+        /** @var ResourceFactory $resourceFactory */
+        $resourceFactory = $this->annotationReader->getClassAnnotation(
+          $resourceClass,
+          ResourceFactory::class
+        );
+        if ($resourceFactory !== null) {
+            if ($resourceFactory->value === null) {
+                throw new InvalidArgumentException(
+                  'Resource factory annotation on class should have a value'
+                );
+            }
+            return $resourceFactory->value;
+        }
+        foreach ($resourceClass->getMethods() as $method) {
+            $resourceFactory = $this->annotationReader->getMethodAnnotation(
+              $method,
+              ResourceFactory::class
+            );
+            if ($resourceFactory !== null) {
+                if ($resourceFactory->value !== null) {
+                    throw new InvalidArgumentException(
+                      'Resource factory annotation on method should not have a value'
+                    );
+                }
+                return [$resourceClassName, $method->getName()];
+            }
+        }
+        return [$resourceClassName, '__construct'];
     }
 
     public function run(): void
@@ -191,10 +218,8 @@ class Api
         if ($request->getRoute() === null) {
             throw new NotFoundHttpException('No resources corresponding');
         }
+        $factory = $this->resourceFactories[$request->getRoute()->getResourceClassName()];
         try {
-            $factory = call_user_func(
-              [$request->getRoute()->getResourceClassName(), 'getResourceFactory']
-            );
             $resource = FactoryHelper::invokeFactory($factory, $request, $this->argumentResolver);
         } catch (InvalidArgumentException $e) {
             throw new NotFoundHttpException($e->getMessage());

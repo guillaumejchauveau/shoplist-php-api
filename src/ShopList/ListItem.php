@@ -17,6 +17,7 @@ use TypeError;
  * @ORM\Entity
  * @ORM\Table(name="list")
  * @Rest\Route(method="GET", path="/list/{itemId}")
+ * @Rest\ResourceFactory({ListItems::class, "getListItem"})
  */
 class ListItem implements JsonSerializable
 {
@@ -44,7 +45,6 @@ class ListItem implements JsonSerializable
      */
     protected $position;
 
-
     public static function create(
       EntityManager $em,
       int $itemId,
@@ -63,6 +63,18 @@ class ListItem implements JsonSerializable
         return $this->id;
     }
 
+    /**
+     * @param EntityManager $em
+     * @param ListItem $listItem
+     * @return $this
+     * @throws ORMException
+     * @throws OptimisticLockException
+     * @Rest\Route(
+     *     method="PUT",
+     *     path="/list/{itemId}",
+     *     requestContentFactory={ListItem::class, "create"}
+     * )
+     */
     public function updateWithListItem(EntityManager $em, ListItem $listItem): self
     {
         if ($listItem->getItem()->getId() !== $this->getItem()->getId()) {
@@ -131,6 +143,12 @@ class ListItem implements JsonSerializable
         return $this;
     }
 
+    /**
+     * @param EntityManager $em
+     * @return self
+     * @throws ORMException
+     * @throws OptimisticLockException
+     */
     public function save(EntityManager $em): self
     {
         $em->persist($this);
@@ -139,6 +157,7 @@ class ListItem implements JsonSerializable
     }
 
     /**
+     * @param EntityManager $em
      * @throws ORMException
      * @throws OptimisticLockException
      * @Rest\Route(method="DELETE", path="/list/{itemId}")

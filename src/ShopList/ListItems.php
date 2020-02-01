@@ -11,7 +11,6 @@ use GECU\Rest;
 use InvalidArgumentException;
 use JsonSerializable;
 use Symfony\Component\HttpFoundation\Response;
-use TypeError;
 
 /**
  * Class ListItems
@@ -51,7 +50,12 @@ class ListItems implements JsonSerializable
      * @return ListItem
      * @throws ORMException
      * @throws OptimisticLockException
-     * @Rest\Route(method="POST", path="/list", requestContentClass=ListItem::class, status=Response::HTTP_CREATED)
+     * @Rest\Route(
+     *     method="POST",
+     *     path="/list",
+     *     requestContentFactory={ListItem::class, "create"},
+     *     status=Response::HTTP_CREATED
+     * )
      */
     public function addListItem(ListItem $listItem): ListItem
     {

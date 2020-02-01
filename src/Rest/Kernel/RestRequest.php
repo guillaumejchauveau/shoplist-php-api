@@ -58,19 +58,6 @@ class RestRequest extends Request
     }
 
     /**
-     * @inheritDoc
-     */
-    protected function prepareBaseUrl(): string
-    {
-        $base = dirname($this->server->get('PHP_SELF'));
-        $indexPos = strpos($base, '/' . $this->webroot);
-        if ($indexPos !== false) {
-            $base = substr($base, 0, $indexPos);
-        }
-        return $base;
-    }
-
-    /**
      * @return string The path of the resource in the API
      */
     public function getResourcePath(): string
@@ -84,5 +71,18 @@ class RestRequest extends Request
     public function getRoute(): ?Route
     {
         return $this->route;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    protected function prepareBaseUrl(): string
+    {
+        $base = dirname($this->server->get('PHP_SELF'));
+        $indexPos = strpos($base, '/' . $this->webroot);
+        if ($indexPos !== false) {
+            $base = substr($base, 0, $indexPos);
+        }
+        return $base;
     }
 }

@@ -12,6 +12,7 @@ use JsonSerializable;
  * @ORM\Entity
  * @ORM\Table(name="items")
  * @Rest\Route(method="GET", path="/items/{id}")
+ * @Rest\ResourceFactory({Items::class, "getItem"})
  */
 class Item implements JsonSerializable
 {
@@ -27,14 +28,6 @@ class Item implements JsonSerializable
      * @var string
      */
     protected $name;
-
-    /**
-     * @inheritDoc
-     */
-    public static function getResourceFactory()
-    {
-        return 'GECU\ShopList\Items::getItem';
-    }
 
     /**
      * @inheritDoc

@@ -4,20 +4,19 @@
 namespace GECU\Rest;
 
 
-use GECU\Rest\Helper\FactoryHelper;
 use Doctrine\Common\Annotations\Annotation\Target;
+use GECU\Rest\Helper\FactoryHelper;
 use GECU\Rest\Kernel\RestRequest;
 use InvalidArgumentException;
 
 /**
  * Represents a mapping between a URL and a resource.
- * @package GECU\Rest
  * @Annotation
  * @Target({"CLASS", "METHOD"})
  * @Attributes({
  *   @Attribute("method", type="string", required=true),
  *   @Attribute("path", type="string", required=true),
- *   @Attribute("requestContentClass", type="string"),
+ *   @Attribute("requestContentFactory", type="mixed"),
  *   @Attribute("status", type="integer"),
  *   @Attribute("query", type="array<string>")
  * })

@@ -11,7 +11,6 @@ use JsonSerializable;
 
 /**
  * Class Items
- * @package GECU\ShopList
  * @Rest\Route(method="GET", path="/items")
  */
 class Items implements JsonSerializable
@@ -24,14 +23,6 @@ class Items implements JsonSerializable
     public function __construct(EntityManager $em)
     {
         $this->em = $em;
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public static function getResourceFactory()
-    {
-        return 'GECU\ShopList\Items::__construct';
     }
 
     /**
