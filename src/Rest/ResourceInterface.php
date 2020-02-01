@@ -18,8 +18,8 @@ interface ResourceInterface
 
     /**
      * Returns all the routes for the resource.
-     * @return iterable<array|Route> An iterable containing either a Route
-     * instance or an array describing a Route instance
+     * @return iterable An iterable containing either a Route
+     *  instance or an array describing a Route instance
      * @see Route::fromArray()
      */
     public static function getRoutes(): iterable;

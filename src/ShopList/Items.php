@@ -26,7 +26,7 @@ class Items implements ResourceInterface, JsonSerializable
      */
     public static function getResourceFactory()
     {
-        return [self::class, '__construct'];
+        return 'GECU\ShopList\Items::__construct';
     }
 
     /**

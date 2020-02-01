@@ -7,11 +7,28 @@ namespace GECU\Rest\Kernel;
 use GECU\Rest\Route;
 use Symfony\Component\HttpFoundation\Request;
 
+/**
+ * A request holding a resource route. The corresponding route's parameters are
+ * set as request attributes.
+ * @see Request::$attributes
+ */
 class RestRequest extends Request
 {
+    /**
+     * @var Route|null
+     */
     protected $route;
+    /**
+     * @var string
+     */
     protected $webroot;
 
+    /**
+     * @inheritDoc
+     * @param Route[] $routes The routes of all the resources
+     * @param string $webroot The path of the API entry point's directory on the
+     *  server
+     */
     public function __construct(
       array $query = [],
       array $request = [],
@@ -54,7 +71,7 @@ class RestRequest extends Request
     }
 
     /**
-     * @return string
+     * @return string The path of the resource in the API
      */
     public function getResourcePath(): string
     {
@@ -62,7 +79,7 @@ class RestRequest extends Request
     }
 
     /**
-     * @return Route|null
+     * @return Route|null The route matching the request, if any
      */
     public function getRoute(): ?Route
     {

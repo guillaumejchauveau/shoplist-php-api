@@ -1,5 +1,8 @@
 <?php
 
+/*
+ * (c) Fabien Potencier <fabien@symfony.com>
+ */
 
 namespace GECU\Rest\Helper;
 
@@ -12,24 +15,20 @@ use Symfony\Component\HttpKernel\Controller\ArgumentValueResolverInterface;
 use Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadataFactory;
 use Symfony\Component\HttpKernel\ControllerMetadata\ArgumentMetadataFactoryInterface;
 
-use function get_class;
-use function is_array;
-use function is_object;
-
 /**
- * Responsible for resolving the arguments passed to an action.
+ * Responsible for resolving the arguments passed to a (pseudo) callable.
  *
  * This modified version of {@see \Symfony\Component\HttpKernel\Controller\ArgumentResolver} allows
  * the resolution of constructor arguments.
  *
  * @author Iltar van der Berg <kjarli@gmail.com>
  */
-class ArgumentResolver
+final class ArgumentResolver
 {
     private $argumentMetadataFactory;
 
     /**
-     * @var iterable|ArgumentValueResolverInterface[]
+     * @var ArgumentValueResolverInterface[]
      */
     private $argumentValueResolvers;
 
@@ -47,11 +46,11 @@ class ArgumentResolver
         return SymfonyArgumentResolver::getDefaultArgumentValueResolvers();
     }
 
-    public function getArguments(Request $request, $controller)
+    public function getArguments(Request $request, $callable): array
     {
         $arguments = [];
 
-        foreach ($this->argumentMetadataFactory->createArgumentMetadata($controller) as $metadata) {
+        foreach ($this->argumentMetadataFactory->createArgumentMetadata($callable) as $metadata) {
             foreach ($this->argumentValueResolvers as $resolver) {
                 if (!$resolver->supports($request, $metadata)) {
                     continue;
@@ -71,11 +70,11 @@ class ArgumentResolver
                     );
                 }
 
-                // continue to the next controller argument
+                // continue to the next callable argument
                 continue 2;
             }
 
-            $representative = $controller;
+            $representative = $callable;
 
             if (is_array($representative)) {
                 $representative = sprintf(
@@ -89,7 +88,7 @@ class ArgumentResolver
 
             throw new RuntimeException(
               sprintf(
-                'Controller "%s" requires that you provide a value for the "$%s" argument. Either the argument is nullable and no null value has been provided, no default value has been provided or because there is a non optional argument after this one.',
+                'Callable "%s" requires that you provide a value for the "$%s" argument. Either the argument is nullable and no null value has been provided, no default value has been provided or because there is a non optional argument after this one.',
                 $representative,
                 $metadata->getName()
               )

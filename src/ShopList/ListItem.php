@@ -46,7 +46,7 @@ class ListItem implements ResourceInterface, JsonSerializable
      */
     public static function getResourceFactory()
     {
-        return [ListItems::class, 'getListItem'];
+        return 'GECU\ShopList\ListItems::getListItem';
     }
 
     /**
@@ -63,7 +63,7 @@ class ListItem implements ResourceInterface, JsonSerializable
             'method' => 'PUT',
             'path' => '/list/{itemId}',
             'action' => 'updateWithListItem',
-            'requestContentFactory' => [ListItem::class, 'create']
+            'requestContentFactory' => 'GECU\ShopList\ListItem::create'
           ],
           [
             'method' => 'DELETE',

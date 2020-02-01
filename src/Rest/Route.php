@@ -10,7 +10,6 @@ use InvalidArgumentException;
 
 /**
  * Represents a mapping between a URL and a resource.
- * @package GECU\Rest
  */
 class Route
 {
@@ -81,7 +80,7 @@ class Route
      * @param array $args
      * @param string $resourceClassName
      * @param string|null $actionName
-     * @return static
+     * @return self
      */
     public static function fromArray(
       array $args,

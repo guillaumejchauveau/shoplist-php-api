@@ -62,17 +62,18 @@ class Api
 
         $this->setResources($resources);
         $requestFactory = new RestRequestFactory($this->routes, $webroot);
-        RestRequest::setFactory([$requestFactory, 'createRestRequest']);
+        RestRequest::setFactory([$requestFactory, 'create']);
     }
 
     /**
-     * @param iterable $resources
+     * @param string[] $resources
      */
     protected function setResources(iterable $resources): void
     {
         $this->routes = [];
         foreach ($resources as $resourceClassName) {
-            foreach ($resourceClassName::getRoutes() as $route) {
+            $resourceRoutes = call_user_func([$resourceClassName, 'getRoutes']);
+            foreach ($resourceRoutes as $route) {
                 if ($route instanceof Route) {
                     $this->routes[] = $route;
                 } elseif (is_array($route)) {
@@ -119,25 +120,25 @@ class Api
         } catch (InvalidArgumentException $e) {
             throw new NotFoundHttpException($e->getMessage());
         }
-        try {
-            $actionName = $request->getRoute()->getActionName();
-            if ($actionName === null) {
-                $response = $resource;
-            } else {
-                /** @var callable $action */
-                $action = [$resource, $actionName];
-                $arguments = $this->argumentResolver->getArguments($request, $action);
+        $actionName = $request->getRoute()->getActionName();
+        if ($actionName === null) {
+            $response = $resource;
+        } else {
+            /** @var callable $action */
+            $action = [$resource, $actionName];
+            $arguments = $this->argumentResolver->getArguments($request, $action);
+            try {
                 $response = $action(...$arguments);
+            } catch (InvalidArgumentException $e) {
+                throw new BadRequestHttpException($e->getMessage());
             }
-
-            $response = new RestResponse($response);
-            if ($request->getRoute()->getStatus() !== null) {
-                $response->setStatusCode($request->getRoute()->getStatus());
-            }
-            return $response;
-        } catch (InvalidArgumentException $e) {
-            throw new BadRequestHttpException($e->getMessage());
         }
+
+        $response = new RestResponse($response);
+        if ($request->getRoute()->getStatus() !== null) {
+            $response->setStatusCode($request->getRoute()->getStatus());
+        }
+        return $response;
     }
 
     protected function handleError(Throwable $throwable): Response

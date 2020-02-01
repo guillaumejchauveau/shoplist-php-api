@@ -8,10 +8,19 @@ use JsonSerializable;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Throwable;
 
+/**
+ * A JsonResponse that keeps the original data.
+ */
 class RestResponse extends JsonResponse
 {
+    /**
+     * @var mixed|null
+     */
     protected $restData;
 
+    /**
+     * @inheritDoc
+     */
     public function __construct($data = null, int $status = self::HTTP_OK, array $headers = [])
     {
         parent::__construct($data, $status, $headers, false);
@@ -24,6 +33,9 @@ class RestResponse extends JsonResponse
         }
     }
 
+    /**
+     * @inheritDoc
+     */
     protected function update(): self
     {
         parent::update();
@@ -35,6 +47,9 @@ class RestResponse extends JsonResponse
         return $this;
     }
 
+    /**
+     * @return mixed|null The original data of the response
+     */
     public function getData()
     {
         return $this->restData;

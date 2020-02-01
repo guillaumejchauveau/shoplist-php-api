@@ -32,7 +32,7 @@ class Item implements ResourceInterface, JsonSerializable
      */
     public static function getResourceFactory()
     {
-        return [Items::class, 'getItem'];
+        return 'GECU\ShopList\Items::getItem';
     }
 
     /**
