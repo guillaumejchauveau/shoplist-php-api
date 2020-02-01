@@ -13,7 +13,7 @@ use JsonSerializable;
 use TypeError;
 
 /**
- * Class ListItem
+ * Represents an item added to the shop list.
  * @ORM\Entity
  * @ORM\Table(name="list")
  * @Rest\Route(method="GET", path="/list/{itemId}")
@@ -45,6 +45,14 @@ class ListItem implements JsonSerializable
      */
     protected $position;
 
+    /**
+     * Creates a new list item with the given properties.
+     * @param EntityManager $em
+     * @param int $itemId
+     * @param int $amount
+     * @param int $position
+     * @return ListItem
+     */
     public static function create(
       EntityManager $em,
       int $itemId,
@@ -58,15 +66,19 @@ class ListItem implements JsonSerializable
         return $listItem;
     }
 
+    /**
+     * @return int
+     */
     public function getId(): int
     {
         return $this->id;
     }
 
     /**
+     * Updates the list item with the properties of a given list item.
      * @param EntityManager $em
      * @param ListItem $listItem
-     * @return $this
+     * @return ListItem
      * @throws ORMException
      * @throws OptimisticLockException
      * @Rest\Route(
@@ -89,6 +101,9 @@ class ListItem implements JsonSerializable
         return $this->save($em);
     }
 
+    /**
+     * @return Item
+     */
     public function getItem(): Item
     {
         return $this->item;
@@ -144,8 +159,9 @@ class ListItem implements JsonSerializable
     }
 
     /**
+     * Persists the list item in the database.
      * @param EntityManager $em
-     * @return self
+     * @return ListItem
      * @throws ORMException
      * @throws OptimisticLockException
      */
@@ -157,6 +173,7 @@ class ListItem implements JsonSerializable
     }
 
     /**
+     * Removes the list item from the database.
      * @param EntityManager $em
      * @throws ORMException
      * @throws OptimisticLockException

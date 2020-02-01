@@ -1,3 +1,4 @@
 vendor/
+.phpdoc/
 db.sqlite
 db_config.php

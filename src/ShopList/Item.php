@@ -8,7 +8,7 @@ use GECU\Rest;
 use JsonSerializable;
 
 /**
- * Class Item
+ * Represents an item available in the shop list.
  * @ORM\Entity
  * @ORM\Table(name="items")
  * @Rest\Route(method="GET", path="/items/{id}")
@@ -40,16 +40,26 @@ class Item implements JsonSerializable
         ];
     }
 
+    /**
+     * @return int
+     */
     public function getId(): int
     {
         return $this->id;
     }
 
+    /**
+     * @return string
+     */
     public function getName(): string
     {
         return $this->name;
     }
 
+    /**
+     * @param string $name
+     * @return Item
+     */
     public function setName(string $name): self
     {
         $this->name = $name;

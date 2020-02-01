@@ -20,6 +20,10 @@ define('APP_DIR', 'src' . DS . 'ShopList');
  */
 define('APP', ROOT . DS . APP_DIR . DS);
 /*
+ * Path to REST's directory.
+ */
+define('REST', ROOT . DS . 'src' . DS . 'Rest' . DS);
+/*
  * Path to the config directory.
  */
 define('CONFIG', ROOT . DS . 'config' . DS);

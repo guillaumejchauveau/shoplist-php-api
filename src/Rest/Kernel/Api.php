@@ -28,6 +28,9 @@ use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Throwable;
 
+/**
+ * Class responsible of the life cycle of a REST API.
+ */
 class Api
 {
     /**
@@ -39,11 +42,14 @@ class Api
      */
     protected $argumentResolver;
     /**
+     * The list of all the API's routes.
      * @var Route[]
      */
     protected $routes;
     /**
-     * @var callable[]
+     * An associative array of the resource class names with their corresponding
+     * factory.
+     * @var mixed[]
      */
     protected $resourceFactories;
     /**
@@ -53,10 +59,12 @@ class Api
 
     /**
      * Api constructor.
-     * @param string[] $resources
-     * @param string $webroot
-     * @param ContainerInterface|null $container
-     * @param Reader|null $annotationReader
+     * @param string[] $resources The class names of the resources
+     * @param string $webroot The path of the API entry point's directory on the
+     *  server
+     * @param ContainerInterface|null $container A service container for the
+     *  factories and resource actions
+     * @param Reader|null $annotationReader A custom annotation reader
      * @throws AnnotationException
      */
     public function __construct(
@@ -89,7 +97,8 @@ class Api
     }
 
     /**
-     * @param string[] $resources
+     * Sets the API's resources by registering their routes and factories.
+     * @param string[] $resources A list of class names
      */
     protected function setResources(iterable $resources): void
     {
@@ -121,8 +130,16 @@ class Api
         }
     }
 
+    /**
+     * Computes the routes of a given resource, either using
+     * {@see RoutableTrait} if available or by reading the annotations.
+     * @param ReflectionClass $resourceClass
+     * @return iterable An iterable containing {@see Route} instances or arrays
+     *  describing a route
+     */
     protected function getResourceClassRoutes(ReflectionClass $resourceClass): iterable
     {
+        // Resource has RoutableTrait.
         if (in_array(RoutableTrait::class, $resourceClass->getTraitNames())) {
             /** @var RoutableTrait $resourceClassName */
             $resourceClassName = $resourceClass->getName();
@@ -130,6 +147,8 @@ class Api
         }
         $resourceClassName = $resourceClass->getName();
         $routes = [];
+        // On-class route annotation.
+        /** @var Route|null $resourceRoute */
         $resourceRoute = $this->annotationReader->getClassAnnotation(
           $resourceClass,
           Route::class
@@ -153,19 +172,24 @@ class Api
     }
 
     /**
+     * Computes the factory of a given resource, either using
+     * {@see ManufacturableTrait} if available or by reading annotations. If no
+     * resource factory can be found, the resource's constructor will be used.
      * @param ReflectionClass $resourceClass
-     * @return mixed Pseudo callable
+     * @return mixed The factory as a pseudo callable
      * @see FactoryHelper
      */
     protected function getResourceClassFactory(ReflectionClass $resourceClass)
     {
+        // Resource has ManufacturableTrait.
         if (in_array(ManufacturableTrait::class, $resourceClass->getTraitNames())) {
             /** @var ManufacturableTrait $resourceClassName */
             $resourceClassName = $resourceClass->getName();
             return $resourceClassName::getFactory() ?? [$resourceClassName, '__construct'];
         }
         $resourceClassName = $resourceClass->getName();
-        /** @var ResourceFactory $resourceFactory */
+        // On-class resource factory annotation.
+        /** @var ResourceFactory|null $resourceFactory */
         $resourceFactory = $this->annotationReader->getClassAnnotation(
           $resourceClass,
           ResourceFactory::class
@@ -195,6 +219,9 @@ class Api
         return [$resourceClassName, '__construct'];
     }
 
+    /**
+     * Processes the current request.
+     */
     public function run(): void
     {
         $request = RestRequest::createFromGlobals();
@@ -206,8 +233,14 @@ class Api
         }
     }
 
+    /**
+     * Generates a response to a given request.
+     * @param RestRequest $request
+     * @return Response
+     */
     protected function handleRequest(RestRequest $request): Response
     {
+        // Handles CORS pre-flight request.
         if ($request->isMethod(Request::METHOD_OPTIONS)) {
             return new RestResponse(
               null, Response::HTTP_NO_CONTENT, [
@@ -245,6 +278,11 @@ class Api
         return $response;
     }
 
+    /**
+     * Generates a response to a given error.
+     * @param Throwable $throwable
+     * @return Response
+     */
     protected function handleError(Throwable $throwable): Response
     {
         if ($throwable instanceof HttpExceptionInterface) {

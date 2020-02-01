@@ -23,41 +23,58 @@ use InvalidArgumentException;
  */
 class Route
 {
-    public const PATH_PARAM_BEGIN = '{';
-    public const PATH_PARAM_END = '}';
+    private const PATH_PARAM_BEGIN = '{';
+    private const PATH_PARAM_END = '}';
     /**
+     * The class name of the resource (MyResource::class).
      * @var string
      */
     protected $resourceClassName;
     /**
+     * The HTTP method.
      * @var string
      */
     protected $method;
     /**
+     * An array representing the route's URL relative to the API. Route
+     * parameters are represented as an array containing the parameter's name as
+     * only element.
      * @var array
      */
     protected $pathParts;
     /**
+     * The name of the method in the resource's class. If null, the resource
+     * instance itself will be the result of the request.
      * @var string|null
      */
     protected $actionName;
     /**
+     * A pseudo callable used to create a data structure for the request's body.
      * @var mixed|null
+     * @see FactoryHelper
      */
     protected $requestContentFactory;
     /**
+     * The return type of the request content factory.
      * @var string|null
      */
     protected $requestContentType;
     /**
+     * The HTTP status of the response if no errors are encountered.
      * @var int|null
      */
     protected $status;
     /**
+     * A list of query parameter names.
      * @var string[]
      */
     protected $query;
 
+    /**
+     * This constructor should not be used directly. Use {@see Route::fromArray()}
+     * instead.
+     * @param array $args
+     */
     public function __construct(array $args)
     {
         $this->method = $args['method'];
@@ -67,6 +84,10 @@ class Route
         $this->query = $args['query'] ?? [];
     }
 
+    /**
+     * Sets the path of the route by computing its parts.
+     * @param string $path
+     */
     protected function setPath(string $path): void
     {
         $this->pathParts = [];
@@ -86,10 +107,11 @@ class Route
     }
 
     /**
+     * Creates a route from an array of route properties.
      * @param array $args
      * @param string $resourceClassName
      * @param string|null $actionName
-     * @return self
+     * @return Route
      */
     public static function fromArray(
       array $args,
@@ -102,11 +124,17 @@ class Route
         return $route;
     }
 
+    /**
+     * @return string
+     */
     public function getResourceClassName(): string
     {
         return $this->resourceClassName;
     }
 
+    /**
+     * @param string $class
+     */
     public function setResourceClassName(string $class): void
     {
         $this->resourceClassName = $class;
@@ -120,13 +148,16 @@ class Route
         return $this->actionName;
     }
 
+    /**
+     * @param string|null $action
+     */
     public function setActionName(?string $action): void
     {
         $this->actionName = $action;
     }
 
     /**
-     * @return int
+     * @return int|null
      */
     public function getStatus(): ?int
     {
@@ -134,13 +165,20 @@ class Route
     }
 
     /**
-     * @return mixed|null
+     * @return mixed|null A pseudo callable
+     * @see FactoryHelper
      */
     public function getRequestContentFactory()
     {
         return $this->requestContentFactory;
     }
 
+    /**
+     * Sets the request content factory and updates the request content type
+     * accordingly.
+     * @param $contentFactory mixed A pseudo callable
+     * @see FactoryHelper
+     */
     protected function setRequestContentFactory($contentFactory): void
     {
         $this->requestContentFactory = $contentFactory;
@@ -155,11 +193,20 @@ class Route
         $this->requestContentType = $returnType;
     }
 
+    /**
+     * @return string|null
+     */
     public function getRequestContentType(): ?string
     {
         return $this->requestContentType;
     }
 
+    /**
+     * Determines if the route matches a given request. If so, an associative
+     * array of the route's parameters and query parameters is returned.
+     * @param RestRequest $request
+     * @return array|null
+     */
     public function match(RestRequest $request): ?array
     {
         if ($request->getMethod() !== $this->getMethod()) {
@@ -183,6 +230,7 @@ class Route
                 $requestPathPart = $requestPath;
                 $requestPath = '';
             }
+            // Part is a route parameter.
             if (is_array($pathPart)) {
                 $params[$pathPart[0]] = $requestPathPart;
             } elseif ($requestPathPart !== $pathPart) {
@@ -215,6 +263,9 @@ class Route
         return sprintf('%s %s', $this->getMethod(), $this->getPath());
     }
 
+    /**
+     * @return string A string representation of the route's path
+     */
     public function getPath(): string
     {
         $path = '';

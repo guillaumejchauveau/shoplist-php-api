@@ -10,7 +10,7 @@ namespace GECU\Rest;
 trait RoutableTrait
 {
     /**
-     * @return iterable An iterable containing {@link Route} instances or arrays
+     * @return iterable An iterable containing {@see Route} instances or arrays
      *  describing a route
      * @see Route::fromArray()
      */

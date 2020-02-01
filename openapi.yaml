@@ -158,8 +158,8 @@ components:
         position:
           type: integer
           description: >-
-            Can be positive or negative. List items with the same position
-            will be ordered by itemId.
+            Can be positive or negative. Real ordering is client implementation
+            dependent.
       example:
         itemId: 3
         amount: 2
@@ -169,6 +169,8 @@ components:
       properties:
         message:
           type: string
+      example:
+        message: "Error"
 
 tags:
   - name: items

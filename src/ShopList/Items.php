@@ -10,7 +10,7 @@ use InvalidArgumentException;
 use JsonSerializable;
 
 /**
- * Class Items
+ * Represents the collection of available items in the shop list.
  * @Rest\Route(method="GET", path="/items")
  */
 class Items implements JsonSerializable
@@ -20,6 +20,10 @@ class Items implements JsonSerializable
      */
     protected $em;
 
+    /**
+     * Items constructor.
+     * @param EntityManager $em
+     */
     public function __construct(EntityManager $em)
     {
         $this->em = $em;
@@ -33,11 +37,19 @@ class Items implements JsonSerializable
         return $this->getCollection();
     }
 
+    /**
+     * @return array
+     */
     public function getCollection(): array
     {
         return $this->em->getRepository(Item::class)->findAll();
     }
 
+    /**
+     * Retrieves an item given its ID.
+     * @param int $id
+     * @return Item
+     */
     public function getItem(int $id): Item
     {
         $item = $this->em->getRepository(Item::class)->find($id);
