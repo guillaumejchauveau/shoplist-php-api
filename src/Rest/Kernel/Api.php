@@ -10,11 +10,11 @@ use Doctrine\Common\Annotations\AnnotationRegistry;
 use Doctrine\Common\Annotations\Reader;
 use GECU\Rest\Helper\ArgumentResolver;
 use GECU\Rest\Helper\FactoryHelper;
-use GECU\Rest\Helper\ManufacturableTrait;
+use GECU\Rest\Helper\ManufacturableInterface;
 use GECU\Rest\Helper\RequestContentValueResolver;
 use GECU\Rest\Helper\ServiceValueResolver;
 use GECU\Rest\ResourceFactory;
-use GECU\Rest\RoutableTrait;
+use GECU\Rest\RoutableInterface;
 use GECU\Rest\Route;
 use InvalidArgumentException;
 use ReflectionClass;
@@ -132,16 +132,15 @@ class Api
 
     /**
      * Computes the routes of a given resource, either using
-     * {@see RoutableTrait} if available or by reading the annotations.
+     * {@see RoutableInterface} if available or by reading the annotations.
      * @param ReflectionClass $resourceClass
      * @return iterable An iterable containing {@see Route} instances or arrays
      *  describing a route
      */
     protected function getResourceClassRoutes(ReflectionClass $resourceClass): iterable
     {
-        // Resource has RoutableTrait.
-        if (in_array(RoutableTrait::class, $resourceClass->getTraitNames())) {
-            /** @var RoutableTrait $resourceClassName */
+        if ($resourceClass->implementsInterface(RoutableInterface::class)) {
+            /** @var RoutableInterface $resourceClassName */
             $resourceClassName = $resourceClass->getName();
             return $resourceClassName::getRoutes();
         }
@@ -173,8 +172,9 @@ class Api
 
     /**
      * Computes the factory of a given resource, either using
-     * {@see ManufacturableTrait} if available or by reading annotations. If no
-     * resource factory can be found, the resource's constructor will be used.
+     * {@see ManufacturableInterface} if available or by reading annotations. If
+     * no resource factory can be found, the resource's constructor will be
+     * used.
      * @param ReflectionClass $resourceClass
      * @return mixed The factory as a pseudo callable
      * @see FactoryHelper
@@ -182,8 +182,8 @@ class Api
     protected function getResourceClassFactory(ReflectionClass $resourceClass)
     {
         // Resource has ManufacturableTrait.
-        if (in_array(ManufacturableTrait::class, $resourceClass->getTraitNames())) {
-            /** @var ManufacturableTrait $resourceClassName */
+        if ($resourceClass->implementsInterface(ManufacturableInterface::class)) {
+            /** @var ManufacturableInterface $resourceClassName */
             $resourceClassName = $resourceClass->getName();
             return $resourceClassName::getFactory() ?? [$resourceClassName, '__construct'];
         }

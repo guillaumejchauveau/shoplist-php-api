@@ -7,11 +7,11 @@ namespace GECU\Rest\Helper;
 /**
  * A trait for objects capable of providing a factory for themselves.
  */
-trait ManufacturableTrait
+interface ManufacturableInterface
 {
     /**
      * @return mixed|null The factory as a pseudo callable
      * @see FactoryHelper
      */
-    abstract public static function getFactory();
+    public static function getFactory();
 }
