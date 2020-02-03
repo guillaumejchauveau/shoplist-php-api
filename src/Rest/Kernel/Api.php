@@ -244,7 +244,8 @@ class Api
         if ($request->isMethod(Request::METHOD_OPTIONS)) {
             return new RestResponse(
               null, Response::HTTP_NO_CONTENT, [
-                    'Access-Control-Allow-Methods' => '*'
+                    'Access-Control-Allow-Methods' => '*',
+                    'Access-Control-Allow-Headers' => '*'
                   ]
             );
         }

@@ -18,6 +18,25 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Item'
+    post:
+      tags:
+        - items
+      description: Create a new item. The ID in the request body is ignored.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Item'
+      responses:
+        '201':
+          description: Item created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        '400':
+          $ref: '#/components/responses/InvalidData'
   '/items/{id}':
     parameters:
       - name: id

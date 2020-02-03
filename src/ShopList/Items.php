@@ -5,9 +5,12 @@ namespace GECU\ShopList;
 
 
 use Doctrine\ORM\EntityManager;
+use Doctrine\ORM\OptimisticLockException;
+use Doctrine\ORM\ORMException;
 use GECU\Rest;
 use InvalidArgumentException;
 use JsonSerializable;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Represents the collection of available items in the shop list.
@@ -57,5 +60,30 @@ class Items implements JsonSerializable
             throw new InvalidArgumentException('Invalid item ID');
         }
         return $item;
+    }
+
+    /**
+     * Adds an item to the database.
+     * @param Item $item
+     * @return Item
+     * @throws ORMException
+     * @throws OptimisticLockException
+     * @Rest\Route(
+     *     method="POST",
+     *     path="/items",
+     *     requestContentFactory={Item::class, "create"},
+     *     status=Response::HTTP_CREATED
+     * )
+     */
+    public function addItem(Item $item): Item
+    {
+        if ($this->em->getRepository(Item::class)->count(
+            [
+              'name' => $item->getName()
+            ]
+          ) > 0) {
+            throw new InvalidArgumentException('Item already exists');
+        }
+        return $item->save($this->em);
     }
 }
